@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#024f8c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="스마텍 견적">
+<meta name="format-detection" content="telephone=yes">
+<link rel="apple-touch-icon" href="images/smartech_logo.png">
+<title>스마텍 견적서 자동화 시스템 v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=7">
+</head>
+<body>
+<div class="container">
+  <div class="brandbar">
+    <img src="images/smartech_logo.png" alt="SMARTECH" class="brand-logo">
+    <span class="brand-tag">Vacuum Total Solution · Edwards 공식대리점</span>
+  </div>
+  <div class="header">
+    <div>
+      <h1>(주)스마텍 견적서 자동화 시스템 <span class="badge">단가 검증완료 v3</span></h1>
+      <p>2026 단가표 IV / SV / VTS &nbsp;·&nbsp; 914개 품목 전체 &nbsp;·&nbsp; 엑셀 원본값 100% 정확 적용</p>
+    </div>
+    <div class="company-info">
+      <div class="ci-line"><strong>(주)스마텍</strong> · 대표 이명재</div>
+      <div class="ci-line">경기 수원시 영통구 신원로 55, 907호</div>
+      <div class="ci-line">T. 031-204-7170 · F. 031-206-7178</div>
+      <div class="ci-line">rokmclmj@gmail.com · smartechvacuum.com</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab" data-tab="process" onclick="switchTab('process')">공정별 추천</button>
+    <button class="tab active" data-tab="search" onclick="switchTab('search')">품목 검색</button>
+    <button class="tab" data-tab="quote" onclick="switchTab('quote')">견적서 작성 <span class="cart-count" id="cartCount">0</span></button>
+    <button class="tab" data-tab="preview" onclick="switchTab('preview')">미리보기 · 출력</button>
+    <button class="tab" data-tab="clients" onclick="switchTab('clients')">고객 관리</button>
+    <button class="tab" data-tab="archive" onclick="switchTab('archive')">발행 내역</button>
+    <button class="tab" data-tab="email" onclick="switchTab('email')">메일 자동견적</button>
+    <button class="tab" data-tab="settings" onclick="switchTab('settings')">설정</button>
+    <button class="tab" data-tab="help" onclick="switchTab('help')">도움말</button>
+  </div>
+
+  <!-- 공정별 추천 -->
+  <div id="tab-process" class="panel">
+    <div class="card">
+      <div class="industry-grid" id="industryGrid"></div>
+    </div>
+    <div id="processDetail" style="display:none">
+      <div class="card">
+        <div class="process-info" id="processInfo"></div>
+        <div class="section-title" style="margin-top:16px">단가표 매칭 추천 품목</div>
+        <div class="scroll-wrap">
+          <table>
+            <thead><tr><th>Part No</th><th>품명</th><th style="text-align:right">단가 (현재 등급)</th><th style="width:80px"></th></tr></thead>
+            <tbody id="recResults"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 품목 검색 -->
+  <div id="tab-search" class="panel active">
+    <div class="card">
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="품명 또는 Part No 검색 (예: RV3, GXS160, EDS200, nXDS, EH250...)" oninput="doSearch()">
+        <select id="sheetFilter" onchange="doSearch()">
+          <option value="">전체 시트</option>
+          <option value="2026 Price_IV">IV (Industrial Vacuum)</option>
+          <option value="2026 Price_SV">SV (Scientific Vacuum)</option>
+          <option value="2026 Price_VTS">VTS (Spare Parts)</option>
+        </select>
+      </div>
+      <div id="resultCount" class="result-count"></div>
+      <div class="scroll-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:30px">#</th>
+            <th>Part No</th>
+            <th>품명</th>
+            <th style="text-align:right">Dealer</th>
+            <th style="text-align:right">OEM</th>
+            <th style="text-align:right">End User</th>
+            <th style="width:72px"></th>
+          </tr></thead>
+          <tbody id="searchResults"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 견적서 작성 -->
+  <div id="tab-quote" class="panel">
+    <div class="card">
+      <div class="section-title">고객 등급 선택</div>
+      <div class="grade-row">
+        <button class="grade-btn selected" id="gradeDealer" onclick="setGrade('dealer')">
+          <span class="grade-label">딜러 <em>Dealer</em></span>
+          <span class="grade-input" onclick="event.stopPropagation()">
+            <input type="number" id="mulDealer" min="50" max="150" step="0.1" value="100" oninput="updateMul('dealer',this.value)" readonly><em>%</em>
+          </span>
+        </button>
+        <button class="grade-btn" id="gradeOEM" onclick="setGrade('oem')">
+          <span class="grade-label">OEM <em>OEM</em></span>
+          <span class="grade-input" onclick="event.stopPropagation()">
+            <input type="number" id="mulOem" min="50" max="150" step="0.1" value="100" oninput="updateMul('oem',this.value)" readonly><em>%</em>
+          </span>
+        </button>
+        <button class="grade-btn" id="gradeEndUser" onclick="setGrade('enduser')">
+          <span class="grade-label">최종사용자 <em>End User</em></span>
+          <span class="grade-input" onclick="event.stopPropagation()">
+            <input type="number" id="mulEnduser" min="50" max="150" step="0.1" value="100" oninput="updateMul('enduser',this.value)" readonly><em>%</em>
+          </span>
+        </button>
+      </div>
+
+      <div class="section-title">견적 미세 조정</div>
+      <div class="adjust-row">
+        <label class="adjust-label">Quote Adjustment</label>
+        <input type="range" id="quoteAdjust" min="50" max="150" step="0.1" value="100" oninput="onAdjust(this.value)">
+        <span class="adjust-num">
+          <input type="number" id="quoteAdjustNum" min="50" max="150" step="0.1" value="100" oninput="onAdjustNum(this.value)"><em>%</em>
+        </span>
+        <button class="btn-mini" onclick="resetAdjust()">초기화</button>
+      </div>
+      <p class="adjust-hint">등급 기준가에 대한 최종 조정율 (50 – 150%, 0.1% 단위)</p>
+
+      <div class="section-title">명함 스캔 (Business Card OCR)</div>
+      <div class="ocr-box">
+        <div class="ocr-drop" id="ocrDrop">
+          <input type="file" id="ocrInput" accept="image/*" capture="environment" hidden>
+          <div class="ocr-cta">
+            <strong>사진 업로드 또는 촬영</strong>
+            <span>JPG / PNG · 한/영 인식</span>
+          </div>
+          <button class="btn" type="button" onclick="document.getElementById('ocrInput').click()">이미지 선택</button>
+        </div>
+        <div class="ocr-status" id="ocrStatus"></div>
+      </div>
+
+      <div class="section-title">고객 정보</div>
+      <div class="form-grid">
+        <div class="form-group"><label>수신 (회사명)</label><input type="text" id="customerName" placeholder="㈜바이오엔티"></div>
+        <div class="form-group"><label>담당자</label><input type="text" id="contactPerson" placeholder="홍길동 부장"></div>
+        <div class="form-group"><label>연락처</label><input type="text" id="contactPhone" placeholder="010-0000-0000"></div>
+        <div class="form-group"><label>이메일</label><input type="text" id="contactEmail" placeholder="example@company.com"></div>
+        <div class="form-group"><label>견적 번호</label><input type="text" id="quoteNo"></div>
+        <div class="form-group"><label>납기 (주)</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" id="deliveryWeeks" value="2" min="1" max="52" style="width:64px">
+            <span style="font-size:13px;color:#888">주 (약 <span id="deliveryDays">14</span>일)</span>
+          </div>
+        </div>
+      </div>
+      <div class="section-title">견적 품목 <span style="font-weight:400;font-size:11px;margin-left:6px;text-transform:none;letter-spacing:0">← 공정추천 또는 검색탭에서 담기 버튼으로 추가</span></div>
+      <div id="cartEmpty" class="empty-state">아직 추가된 품목이 없습니다.<br>공정별 추천 탭 또는 품목 검색 탭에서 원하는 제품을 담아주세요.</div>
+      <div class="scroll-wrap" id="cartWrap" style="display:none">
+        <table>
+          <thead><tr><th>Part No</th><th>품명</th><th style="text-align:center;width:70px">수량</th><th style="text-align:right;width:120px">단가</th><th style="text-align:right;width:120px">금액</th><th style="width:60px"></th></tr></thead>
+          <tbody id="cartBody"></tbody>
+        </table>
+      </div>
+      <div class="total-section" id="cartTotals" style="display:none">
+        <div class="total-row"><span class="total-label">공급가액</span><span class="total-val" id="subtotal"></span></div>
+        <div class="total-row"><span class="total-label">부가세 (10%)</span><span class="total-val" id="vat"></span></div>
+        <div class="total-row" style="border-top:1px solid #e5e5e2;padding-top:8px;margin-top:4px"><span class="total-label">총 공급가액</span><span class="total-val grand" id="grandTotal"></span></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="switchTab('process')">← 공정 추천</button>
+        <button class="btn" onclick="switchTab('search')">← 품목 추가</button>
+        <button class="btn" onclick="saveCurrentCustomer()">고객 저장</button>
+        <button class="btn primary" onclick="goPreview()">미리보기 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 고객 관리 -->
+  <div id="tab-clients" class="panel">
+    <div class="card">
+      <div class="section-title">고객 관리 / Clients</div>
+      <div class="search-row">
+        <input type="text" id="clientSearch" placeholder="회사명, 담당자, 이메일 검색" oninput="renderClients()">
+        <button class="btn" onclick="exportClients()">내보내기 (JSON)</button>
+        <button class="btn" onclick="document.getElementById('clientImport').click()">가져오기</button>
+        <input type="file" id="clientImport" accept="application/json" hidden onchange="importClients(event)">
+      </div>
+      <div class="scroll-wrap">
+        <table>
+          <thead><tr>
+            <th>회사명</th><th>담당자</th><th>연락처</th><th>이메일</th>
+            <th>등급</th><th>최근 수정</th><th style="width:180px"></th>
+          </tr></thead>
+          <tbody id="clientRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 발행 내역 -->
+  <div id="tab-archive" class="panel">
+    <div class="card">
+      <div class="section-title">발행 견적 내역 / Issued Quotations</div>
+      <div class="search-row">
+        <input type="text" id="archiveSearch" placeholder="견적번호, 회사명 검색" oninput="renderArchive()">
+        <button class="btn" onclick="exportArchive()">내보내기 (JSON)</button>
+      </div>
+      <div class="scroll-wrap">
+        <table>
+          <thead><tr>
+            <th>견적번호</th><th>발행일</th><th>수신</th><th>등급</th>
+            <th style="text-align:right">공급가액</th><th style="text-align:right">총액(VAT포함)</th>
+            <th style="width:220px"></th>
+          </tr></thead>
+          <tbody id="archiveRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 메일 자동견적 -->
+  <div id="tab-email" class="panel">
+    <div class="card">
+      <div class="section-title">메일 자동견적 / Email-to-Quote Agents</div>
+      <p class="adjust-hint">고객사에서 받은 문의 메일 전체(제목·본문·서명)를 붙여넣으세요. 두 에이전트가 순차적으로 (1) 거래 등급 + 고객정보 추출, (2) 카탈로그에서 적합 제품을 선정하여 견적 초안을 제안합니다. 확인 후 <strong>적용</strong>을 누르면 견적서 작성 탭으로 이동합니다.</p>
+      <textarea id="emailBody" class="email-body" rows="12" placeholder="예)&#10;From: 홍길동 <hong@client.com>&#10;Subject: [문의] 진공오븐용 드라이펌프 견적 요청&#10;&#10;안녕하세요, ㈜바이오엔티 홍길동 부장입니다.&#10;저희가 연구소에서 진공오븐 2대 운영 중이며, nXDS15i 펌프 2대와 예비 오일씰 견적 부탁드립니다.&#10;..."></textarea>
+      <div class="btn-row">
+        <button class="btn primary" onclick="runEmailAgents()">에이전트 분석 시작</button>
+        <button class="btn" onclick="clearEmailInput()">지우기</button>
+      </div>
+      <div id="emailResult" class="email-result"></div>
+    </div>
+  </div>
+
+  <!-- 설정 -->
+  <div id="tab-settings" class="panel">
+    <div class="card">
+      <div class="section-title">
+        등급별 가격 배수 / Grade Multipliers
+        <span id="mulLockStatus" class="lock-pill">잠금</span>
+      </div>
+      <p class="adjust-hint" style="margin-bottom:20px">엑셀 기준가에 대한 배수(%)입니다. 실수 입력 방지를 위해 기본 잠금 상태입니다. <strong>수정하기</strong>를 눌러 값 변경 후 <strong>저장하기</strong>로 확정하세요. 50 – 150% 범위, 0.1% 단위.</p>
+      <div class="settings-grid" id="mulGrid">
+        <div class="settings-block">
+          <label>딜러 · Dealer</label>
+          <div class="adjust-row">
+            <input type="range" min="50" max="150" step="0.1" id="setDealer" oninput="updateMul('dealer',this.value)" disabled>
+            <span class="adjust-num"><input type="number" min="50" max="150" step="0.1" id="setDealerVal" oninput="updateMul('dealer',this.value)" readonly><em>%</em></span>
+          </div>
+        </div>
+        <div class="settings-block">
+          <label>OEM</label>
+          <div class="adjust-row">
+            <input type="range" min="50" max="150" step="0.1" id="setOem" oninput="updateMul('oem',this.value)" disabled>
+            <span class="adjust-num"><input type="number" min="50" max="150" step="0.1" id="setOemVal" oninput="updateMul('oem',this.value)" readonly><em>%</em></span>
+          </div>
+        </div>
+        <div class="settings-block">
+          <label>최종 사용자 · End User</label>
+          <div class="adjust-row">
+            <input type="range" min="50" max="150" step="0.1" id="setEnduser" oninput="updateMul('enduser',this.value)" disabled>
+            <span class="adjust-num"><input type="number" min="50" max="150" step="0.1" id="setEnduserVal" oninput="updateMul('enduser',this.value)" readonly><em>%</em></span>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row" id="mulBtnView">
+        <button class="btn primary" onclick="enterMulEdit()">수정하기</button>
+        <button class="btn" onclick="resetMul()">기본값 복원 (100%)</button>
+      </div>
+      <div class="btn-row" id="mulBtnEdit" style="display:none">
+        <button class="btn primary" onclick="saveMulEdit()">저장하기</button>
+        <button class="btn" onclick="cancelMulEdit()">취소</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">명함 판독 에이전트 / Card Parser Agent</div>
+      <p class="adjust-hint">Claude Vision 기반 전문 파서를 사용하면 Tesseract 대비 한·영 혼용 명함 인식 정확도가 크게 향상됩니다. API 키가 설정되지 않으면 Tesseract로 자동 대체됩니다.</p>
+      <div class="settings-block">
+        <label>Anthropic API Key</label>
+        <div class="adjust-row" style="padding-top:4px">
+          <input type="password" id="apiKey" placeholder="sk-ant-..." style="flex:1;padding:10px 12px;border:1px solid var(--mk-rule);border-radius:0;font-family:var(--mono);font-size:12px" autocomplete="off">
+          <button class="btn-mini" onclick="saveApiKey()">저장</button>
+          <button class="btn-mini" onclick="clearApiKey()">삭제</button>
+        </div>
+        <p class="adjust-hint" style="margin-top:8px">키는 브라우저 localStorage 에만 저장되며 서버로 전송되지 않습니다. 모델: <code>claude-haiku-4-5</code> (저지연·저비용).
+          <label style="margin-left:8px"><input type="checkbox" id="useHighModel"> 고정밀 모드 (claude-sonnet-4-6)</label>
+        </p>
+      </div>
+      <div class="settings-block">
+        <label>엔진 상태</label>
+        <div id="engineStatus" class="ocr-status"><span class="muted">초기화 중…</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 미리보기 -->
+  <div id="tab-preview" class="panel">
+    <div id="previewContent"></div>
+    <div class="btn-row notice">
+      <button class="btn" onclick="switchTab('quote')">← 수정</button>
+      <button class="btn primary" onclick="window.print()">인쇄 / PDF 저장</button>
+      <button class="btn" onclick="copyText()">텍스트 복사</button>
+    </div>
+    <p style="font-size:12px;color:#aaa;margin-top:8px">인쇄 시 브라우저에서 "PDF로 저장"을 선택하면 견적서 PDF를 만들 수 있습니다.</p>
+  </div>
+
+  <!-- 도움말 -->
+  <div id="tab-help" class="panel">
+    <div class="card">
+      <h2 class="help-h1">시스템 구성 · 로직 · 계산 안내</h2>
+      <p class="help-lede">본 시스템은 정적 웹앱(서버 없음)으로 구동됩니다. 모든 데이터는 브라우저 <code>localStorage</code> 에만 저장되며, 외부 호출은 Anthropic API(명함 판독·메일 자동견적)와 Tesseract.js CDN(OCR fallback)에 한해 발생합니다. 이 페이지는 각 탭의 동작, 가격 계산 공식, 두 AI 에이전트의 역할과 파이프라인을 설명합니다.</p>
+
+      <h3 class="help-h2">1 · 아키텍처 한눈에 보기</h3>
+      <div class="help-box">
+        <pre class="help-pre">index.html  ── UI 레이아웃 · 탭 패널
+css/style.css ─ McKinsey 디자인 시스템 (네이비 #051C2C · Lora/Inter/IBM Plex Mono)
+js/script.js  ─ 원본 엔진 (공정 데이터 INDUSTRIES · 전 품목 ALL_PRODUCTS · 검색·장바구니·미리보기)
+js/extras.js  ─ 설정 · 고객관리 · 발행보관함 · 명함 OCR (Claude Vision 우선, Tesseract fallback)
+js/email-agent.js ─ 메일 자동견적 2-에이전트 파이프라인
+(localStorage) mk.clients.v1 · mk.archive.v1 · mk.settings.v1 · mk.anthropic.key · mk.anthropic.model</pre>
+      </div>
+
+      <h3 class="help-h2">2 · 탭별 기능</h3>
+
+      <h4 class="help-h3">2.1 공정별 추천</h4>
+      <p class="help-p">9개 공정 카테고리(코팅, 이차전지, 진공로, 가스실린더, 진공이중배관, 동결건조, OLED, 진공오븐, 연구/분석)를 타일로 선택합니다. 카드 클릭 시 해당 공정의 진공도·펌프 유형·핵심 포인트·추천 모델군이 표시되고, 모델 키워드(예: <code>nXDS</code>, <code>GXS</code>) 를 기반으로 914개 전체 카탈로그에서 부분일치 최대 25건을 추천합니다. <em>담기 +</em> 로 장바구니에 추가되며, 단가 표시는 현재 선택된 등급가를 따릅니다.</p>
+
+      <h4 class="help-h3">2.2 품목 검색</h4>
+      <p class="help-p">품명 또는 Part No 부분일치 검색. 시트 필터(IV/SV/VTS)로 세트를 좁힐 수 있습니다. 결과는 최대 100개. 각 행에 <em>Dealer / OEM / End User</em> 3개 단가가 병렬 표시되어 등급 비교가 즉시 가능합니다.</p>
+
+      <h4 class="help-h3">2.3 견적서 작성</h4>
+      <p class="help-p">견적 작성의 중심 화면. 아래 순서로 구성됩니다.</p>
+      <ol class="help-ol">
+        <li><strong>등급 선택 + 등급 배수 입력</strong> — 딜러/OEM/최종사용자 3등급 중 하나. 각 등급 라벨 우측의 <code>%</code> 입력칸이 <em>현재 등급별 배수</em>이며, 기본 100%. 50~150% 범위에서 0.1% 단위 조정. (설정 탭에서 동일 값을 관리합니다.)</li>
+        <li><strong>견적 미세 조정</strong> — 이번 견적에만 적용되는 전체 가격 조정 슬라이더(50~150%). 장바구니 저장·불러오기 시 함께 보존됩니다.</li>
+        <li><strong>명함 스캔(OCR)</strong> — 이미지 업로드 → Claude Vision 명함 파서 에이전트 실행(키 미설정 시 Tesseract). 회사·담당자·전화·이메일이 폼에 자동 반영.</li>
+        <li><strong>고객 정보 폼</strong> — 회사명/담당자/연락처/이메일/견적번호/납기. 견적번호 기본값은 <code>YYMMDD_SR01</code>.</li>
+        <li><strong>견적 품목 / 합계</strong> — 수량·단가 직접 수정 가능. 합계는 실시간 재계산.</li>
+        <li><strong>고객 저장</strong> — 현재 폼 내용을 CRM(고객 관리 탭)에 저장. 동일 회사+이메일 조합은 덮어쓰기.</li>
+      </ol>
+
+      <h4 class="help-h3">2.4 미리보기 · 출력</h4>
+      <p class="help-p"><em>미리보기 →</em> 를 누르면 견적서가 A4 포맷으로 렌더링되고, 동시에 <strong>발행 내역</strong>에 자동 아카이브됩니다. 브라우저 인쇄 → PDF로 저장으로 파일 추출. <em>텍스트 복사</em> 는 메일 본문용 평문 추출입니다.</p>
+
+      <h4 class="help-h3">2.5 고객 관리 (CRM)</h4>
+      <p class="help-p"><code>mk.clients.v1</code> 에 저장된 고객 레코드를 검색·불러오기·삭제. JSON 내보내기/가져오기로 기기 간 이전 가능. 불러오기는 해당 고객의 회사·담당자·연락처·이메일·등급을 자동으로 견적서 작성 폼에 채웁니다.</p>
+
+      <h4 class="help-h3">2.6 발행 내역 (Archive)</h4>
+      <p class="help-p">미리보기 단계에서 자동 저장된 견적서 레코드 목록. 견적번호·발행일·수신·등급·공급가액·총액 열람. <em>불러오기</em> 로 과거 견적 전체(장바구니 품목·단가·등급·미세조정·고객정보)를 복원. 동일 견적번호 재발행 시 덮어쓰기. JSON 내보내기 지원.</p>
+
+      <h4 class="help-h3">2.7 메일 자동견적 (2-Agent)</h4>
+      <p class="help-p">고객사 문의 메일 전체를 붙여넣고 <em>에이전트 분석 시작</em> 클릭 → 두 에이전트가 순차 실행(상세 로직은 <a href="#help-agents" onclick="document.getElementById('help-agents').scrollIntoView({behavior:'smooth'});return false;">§4</a>). 제안 결과는 카드로 표시되며 <em>적용</em> 시 고객정보/등급/장바구니가 한 번에 설정되고 견적서 작성 탭으로 이동합니다.</p>
+
+      <h4 class="help-h3">2.8 설정</h4>
+      <p class="help-p">등급별 % 배수 일괄 관리(잠금/수정 모드), 초기화, Anthropic API 키 저장(password 필드, localStorage), 모델 선택(기본 <code>claude-haiku-4-5</code> · 고정밀 <code>claude-sonnet-4-6</code>), 엔진 상태 표시.</p>
+
+      <h3 class="help-h2">3 · 가격 계산 공식</h3>
+      <p class="help-p">모든 단가는 엑셀 원본값(등급별 3개 컬럼)을 기준으로 아래 순서로 계산됩니다. 계산 함수는 <code>js/script.js</code> 의 <code>getP(p)</code>.</p>
+      <div class="help-formula">
+        <div class="ff"><span class="ff-step">STEP 1</span> <span class="ff-def">기준가</span> = <code>p.dealer</code> | <code>p.oem</code> | <code>p.endUser</code> (현재 등급 컬럼)</div>
+        <div class="ff"><span class="ff-step">STEP 2</span> <span class="ff-def">등급 조정가</span> = STEP1 × <code>MK_SETTINGS.multipliers[grade]</code> / 100</div>
+        <div class="ff"><span class="ff-step">STEP 3</span> <span class="ff-def">표시 단가</span> = STEP2 × <code>MK_QUOTE_ADJUST</code> / 100 → <code>Math.round()</code></div>
+        <div class="ff"><span class="ff-step">STEP 4</span> <span class="ff-def">라인 금액</span> = 표시 단가 × 수량 &nbsp;(사용자가 수동으로 <code>customPrice</code> 를 입력한 행은 STEP 2–3 을 건너뛰고 입력값이 그대로 사용됨)</div>
+        <div class="ff"><span class="ff-step">STEP 5</span> <span class="ff-def">공급가액</span> = Σ 라인 금액 &nbsp; · &nbsp; <span class="ff-def">부가세</span> = <code>round(공급가액 × 0.1)</code> &nbsp; · &nbsp; <span class="ff-def">총액</span> = 공급가액 + 부가세</div>
+      </div>
+      <p class="help-p"><strong>핵심:</strong> 등급 배수(설정)와 견적 미세조정은 <em>곱연산</em>으로 누적됩니다. 예) Dealer 기준가 100,000원 × 배수 95% × 조정 98% = <code>93,100</code> 원. 배수는 설정 탭에서 저장되어 모든 견적에 지속 적용되고, 조정은 현재 견적에만 적용됩니다.</p>
+
+      <h3 class="help-h2" id="help-agents">4 · AI 에이전트 로직</h3>
+      <p class="help-p">모든 AI 호출은 Anthropic Messages API의 <code>tools</code> + <code>tool_choice</code> 메커니즘으로 <em>구조화된 JSON 도구 호출</em>을 강제합니다. 이는 자유 텍스트 응답보다 파싱 실패율을 크게 낮춥니다.</p>
+
+      <h4 class="help-h3">4.1 명함 판독 에이전트</h4>
+      <p class="help-p">파일: <code>js/extras.js</code> · 함수 <code>parseWithClaude()</code>.</p>
+      <ul class="help-ul">
+        <li><strong>입력</strong>: 이미지 파일(Base64) + 판독 규칙 프롬프트.</li>
+        <li><strong>도구</strong>: <code>extract_business_card</code> · 스키마 필드 — <code>company, company_en, contact, title, department, mobile, office, fax, email, address, website, memo, confidence</code>.</li>
+        <li><strong>규칙 요약</strong>: 법인격(㈜, Co., Ltd.) 원문 보존; 전화번호 <code>010-0000-0000</code> 포맷; 국가코드(+82) 0 로 치환; 01X 계열은 mobile, 그 외는 office; 직급과 부서 분리; 명함에 없는 필드는 <code>null</code> (환각 금지); <code>confidence</code> 자체 평가.</li>
+        <li><strong>Fallback</strong>: API 키 미설정 시 Tesseract.js 로 한/영 OCR 후 정규식 파싱(회사는 법인격 키워드, 담당자는 직급 키워드, 전화는 휴대 형식 우선).</li>
+        <li><strong>UI</strong>: 반환된 모든 필드를 표로 표시 + 신뢰도 · 모델 · 토큰 사용량. 핵심 4개(회사·담당자·전화·이메일)만 폼에 자동 반영.</li>
+      </ul>
+
+      <h4 class="help-h3">4.2 메일 자동견적 · Agent 1 (등급 분류 + 고객정보)</h4>
+      <p class="help-p">파일: <code>js/email-agent.js</code> · 함수 <code>callTool("classify_grade", ...)</code>.</p>
+      <ul class="help-ul">
+        <li><strong>역할</strong>: 메일 본문에서 거래 등급(<code>dealer|oem|enduser</code>)을 판정하고, 동시에 회사·담당자·직급·전화·이메일·주소·문의요지를 추출.</li>
+        <li><strong>판정 기준</strong>:
+          <ul>
+            <li><em>딜러</em>: 재판매/총판/대리점/판매처/리셀러(reseller/distributor), 자신을 딜러로 명시, 다수 최종사용자에게 납품 목적</li>
+            <li><em>OEM</em>: 자사 장비에 내장/통합(integration)·BOM·생산라인 투입, 반복·연속 수요 시그널</li>
+            <li><em>최종사용자</em>: 대학·연구소·공장 공정 직접 운영, 소수 자체 사용, 구체 공정 묘사</li>
+            <li>시그널이 약하면 <code>enduser</code> 로 보수적 기본값, <code>confidence</code> 하향</li>
+          </ul>
+        </li>
+        <li><strong>출력</strong>: <code>{ grade, confidence, rationale, signals[], customer{...}, subject_summary }</code>. signals 는 판정 근거가 된 메일 원문 발췌 3~6개.</li>
+      </ul>
+
+      <h4 class="help-h3">4.3 카탈로그 사전 필터 (클라이언트 측)</h4>
+      <p class="help-p">Agent 2 호출 전, 914개 전체를 LLM 에 넘기지 않기 위해 브라우저에서 후보를 최대 80개로 축약합니다. 함수 <code>prefilterCatalog()</code>.</p>
+      <ol class="help-ol">
+        <li>메일 텍스트에서 토큰화 (<code>[a-z][a-z0-9\-]{2,}</code>) → 영문 모델명 후보군 수집.</li>
+        <li>공정 키워드 매핑표(코팅/이차전지/진공로/동결건조 등 9종)로 매칭되면 관련 모델 시리즈(nXDS, GXS, nEXT 등)를 추가 토큰으로 확장.</li>
+        <li>각 제품의 <code>partNo + description</code> 에 토큰이 포함되면 점수화. 앞부분 일치(≤20 자) = +3, 그 외 +1, 정확 Part No 매칭 = +10.</li>
+        <li>점수 &gt; 0 만 필터링 → 내림차순 정렬 → 상위 80개만 Agent 2 에 전달.</li>
+      </ol>
+
+      <h4 class="help-h3">4.4 메일 자동견적 · Agent 2 (제품 선정)</h4>
+      <p class="help-p">함수 <code>callTool("select_products", ...)</code>. 입력에 Agent 1 의 등급 + 메일 원문 + 사전필터 후보(JSON <code>[{p, d, s}]</code>) 를 함께 제공.</p>
+      <ul class="help-ul">
+        <li><strong>규칙</strong>: 카탈로그 외 Part No 생성 금지(환각 방지). 모델명 명시 시 최우선 매칭. 수량 명시가 없으면 1. 공정/용도만 언급되면 펌프·부스터·액세서리 조합 5~8개 추천. 확신 부족 시 <code>notes</code> 에 확인 필요 사항 기재.</li>
+        <li><strong>출력</strong>: <code>{ items: [{ partNo, qty, rationale }], confidence, notes }</code>.</li>
+        <li><strong>검증</strong>: 클라이언트에서 각 <code>partNo</code> 를 <code>ALL_PRODUCTS</code> 와 재매칭. 존재하지 않는 항목은 제외하고 개수를 경고로 표시.</li>
+      </ul>
+
+      <h4 class="help-h3">4.5 적용 단계</h4>
+      <p class="help-p"><em>적용</em> 클릭 시 <code>applyEmailProposal()</code> 실행:</p>
+      <ol class="help-ol">
+        <li>고객정보 4개 필드 폼 반영 + 담당자 = <code>이름 + 직급</code>.</li>
+        <li><code>setGrade()</code> 로 등급 설정 → 등급 배수 자동 적용.</li>
+        <li>장바구니가 비어있으면 그대로 추가, 품목이 있으면 "교체 / 추가" 확인 대화상자.</li>
+        <li>기존 장바구니에 동일 Part No 가 있으면 수량 가산, 없으면 신규 행.</li>
+        <li><code>switchTab("quote")</code> 로 이동 → 사용자 검토 후 <em>미리보기 →</em> 로 진행.</li>
+      </ol>
+
+      <h3 class="help-h2">5 · 데이터 · 보안</h3>
+      <ul class="help-ul">
+        <li><strong>저장 위치</strong>: 모든 업무 데이터는 브라우저 <code>localStorage</code> 에만 저장됩니다. 서버 전송 없음.</li>
+        <li><strong>API 키</strong>: 설정 탭에서 저장한 Anthropic 키는 <code>localStorage.mk.anthropic.key</code> 에 평문 저장. 브라우저 기기를 타인과 공유하지 마십시오.</li>
+        <li><strong>직접 호출 헤더</strong>: <code>anthropic-dangerous-direct-browser-access: true</code> 헤더로 CORS 허용. 프로덕션에서는 백엔드 프록시로 키를 감추는 것이 권장됩니다.</li>
+        <li><strong>백업</strong>: 고객 관리/발행 내역 각 탭의 JSON 내보내기를 주기적으로 다운로드해 보관하십시오. 브라우저 저장소 초기화 시 데이터 손실 가능.</li>
+      </ul>
+
+      <h3 class="help-h2">6 · 모델 · 비용 기준</h3>
+      <ul class="help-ul">
+        <li><strong>기본</strong>: <code>claude-haiku-4-5</code> — 저지연·저비용. 명함·메일 정형 태스크에 적합.</li>
+        <li><strong>고정밀</strong>: <code>claude-sonnet-4-6</code> — 저해상도 명함·모호한 메일에서 정확도 향상. 토큰 단가 높음.</li>
+        <li><strong>토큰 절감 장치</strong>: 사전필터(§4.3), Tool Use 스키마 강제(불필요한 자유 텍스트 금지), 이미지 직접 Base64(외부 호스팅 불필요).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div id="floatCta" class="float-cta" onclick="switchTab('quote')">
+  <span class="fc-count" id="fcCount">0건</span>
+  <span class="fc-total" id="fcTotal">₩0</span>
+  <button class="fc-btn" type="button" onclick="event.stopPropagation();goPreview()">미리보기 →</button>
+</div>
+<div id="mkToast" class="mk-toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="js/script.js?v=7"></script>
+<script src="js/extras.js?v=7"></script>
+<script src="js/email-agent.js?v=2"></script>
+</body>
+</html>
