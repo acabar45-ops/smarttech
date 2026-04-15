@@ -472,6 +472,36 @@ window.MK_ARCHIVE_SAVE = async function(){
   const { error } = await sb().from("smartech_quotations").upsert(rec, { onConflict: "user_id,quote_no" });
   if(error){ console.warn("archive save", error); return; }
   await loadArchive();
+
+  // [무조건 저장] 미리보기 생성과 동시에 고객도 자동 업서트
+  try{
+    const c = rec.customer;
+    if(c && (c.company || c.contact || c.email)){
+      const norm = s => (s||"").toLowerCase().replace(/[\s()㈜·,./\-]/g,"");
+      const existing = (MK_CLIENTS||[]).find(x =>
+        (c.email && (x.email||"").toLowerCase() === c.email.toLowerCase()) ||
+        (c.company && norm(x.company) === norm(c.company))
+      );
+      const payload = {
+        company: c.company || null,
+        contact: c.contact || null,
+        phone: c.phone || null,
+        email: c.email || null,
+        grade: c.grade || rec.grade || "dealer",
+      };
+      if(existing){
+        const patch = {};
+        Object.keys(payload).forEach(k=>{ if(payload[k]!=null && payload[k]!=="") patch[k]=payload[k]; });
+        if(existing.grade) delete patch.grade; // 기존 등급 유지
+        if(Object.keys(patch).length){
+          await sb().from("smartech_clients").update(patch).eq("id", existing.id);
+        }
+      } else {
+        await sb().from("smartech_clients").insert({ ...payload, user_id: window.MK_USER.id });
+      }
+      await loadClients();
+    }
+  }catch(e){ console.warn("client auto-save on archive", e); }
 };
 
 async function loadArchive(){

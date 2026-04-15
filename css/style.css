@@ -1266,3 +1266,65 @@ tr:hover td{background:var(--mk-bg-soft);box-shadow:inset 3px 0 0 var(--mk-navy)
   font-size:12px;font-family:var(--sans);background:#fff;outline:none;
   color:var(--mk-ink);
 }
+
+/* ============================================================
+   Preview tab — 원본 메일 + 회신 초안 컨텍스트 패널
+   (화면에서만 보이고 인쇄 시 숨김)
+============================================================ */
+.pv-email-group{
+  display:grid;grid-template-columns:1fr 1fr;gap:14px;
+  margin-bottom:24px;
+}
+.pv-email{
+  border:1px solid var(--mk-rule);background:#fff;
+}
+.pv-email > summary{
+  padding:12px 16px;cursor:pointer;
+  font-family:var(--sans);font-size:13px;
+  color:var(--mk-navy);background:var(--mk-bg-alt);
+  border-bottom:1px solid var(--mk-rule);
+  list-style:none;position:relative;
+}
+.pv-email > summary::-webkit-details-marker{display:none}
+.pv-email > summary::after{
+  content:"▾";position:absolute;right:14px;top:50%;
+  transform:translateY(-50%);color:var(--mk-muted);
+  transition:transform .2s;
+}
+.pv-email[open] > summary::after{transform:translateY(-50%) rotate(180deg)}
+.pv-sum{
+  margin-left:10px;font-weight:400;color:var(--mk-muted);
+  font-size:11px;letter-spacing:0.02em;
+}
+.pv-email-body{
+  padding:14px 16px;font-size:12.5px;line-height:1.7;
+  color:var(--mk-body);max-height:360px;overflow-y:auto;
+  background:#FAFAF7;
+}
+.pv-reply{border-color:var(--mk-navy)}
+.pv-reply > summary{background:var(--mk-navy);color:#fff}
+.pv-reply > summary::after{color:rgba(255,255,255,0.8)}
+.pv-reply .pv-sum{color:rgba(255,255,255,0.85)}
+.pv-reply-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.pv-reply-text{
+  padding:14px;border:1px solid var(--mk-rule);border-radius:0;
+  background:#fff;font-family:var(--sans);font-size:13px;
+  line-height:1.75;color:var(--mk-ink);
+  min-height:260px;resize:vertical;outline:none;white-space:pre-wrap;
+}
+.pv-reply-text:focus{border-color:var(--mk-navy)}
+.pv-reply-actions{display:flex;gap:8px;flex-wrap:wrap}
+.pv-reply-actions .btn{flex:1 1 auto;min-height:42px}
+.pv-warn{
+  padding:10px 14px;background:#FFF4D6;border-left:3px solid #E6C96E;
+  font-size:12px;color:#5B4500;line-height:1.55;
+}
+.pv-warn ul{margin-top:4px;padding-left:20px}
+
+@media (max-width:900px){
+  .pv-email-group{grid-template-columns:1fr}
+}
+@media print{
+  .pv-email-group, .no-print{display:none !important}
+}
+

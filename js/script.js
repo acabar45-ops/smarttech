@@ -144,7 +144,7 @@ function renderPreview(){
   const sub=cart.reduce((s,item)=>{const p=item.customPrice!==null?item.customPrice:getP(item);return s+p*item.qty;},0);
   const vat=Math.round(sub*0.1);
   const rows=cart.map((item,i)=>{const p=item.customPrice!==null?item.customPrice:getP(item);return`<tr><td>${i+1}</td><td class="left">${item.partNo}<br><span style="font-size:10px;color:#888">${item.description}</span></td><td>${dw}주</td><td>${item.qty}</td><td>${fmt(p)}</td><td>${fmt(p*item.qty)}</td></tr>`;}).join("");
-  document.getElementById("previewContent").innerHTML=`<div class="preview-wrap"><div class="preview-header"><div><div class="preview-title">견 적 서 / QUOTATION</div><div class="preview-grade">등급: ${gl}</div></div><div class="preview-company"><strong style="font-size:15px">(주)스마텍 / SMARTECH</strong><br>경기도 수원시 신원로55 907호<br>충남 천안시 두정공원2길 49<br>Tel: 031-204-7170 &nbsp;·&nbsp; Fax: 031-206-7178<br>대표 이명재 &nbsp;·&nbsp; www.smartechvacuum.com</div></div><div class="preview-meta"><div><div><span class="meta-label">수&nbsp;&nbsp;&nbsp;신: </span><strong>${cn}</strong></div><div><span class="meta-label">담당자: </span>${cp} 님</div><div><span class="meta-label">연락처: </span>${ph}</div><div><span class="meta-label">E-mail: </span>${em}</div></div><div style="text-align:right"><div><span class="meta-label">견적 번호: </span>${qno}</div><div><span class="meta-label">견적 날짜: </span>${ds}</div><div><span class="meta-label">영업 담당: </span>이명재</div><div><span class="meta-label">핸드폰: </span>010-3194-7170</div></div></div><table class="preview-table"><thead><tr><th>No</th><th style="text-align:left">품명 및 규격</th><th>납기</th><th>수량</th><th>단가(원)</th><th>공급가액(원)</th></tr></thead><tbody>${rows}</tbody></table><div class="preview-totals"><table><tr><td>공급가액</td><td><strong>${fmt(sub)}원</strong></td></tr><tr><td>부가세 (10%)</td><td>${fmt(vat)}원</td></tr><tr class="grand-row"><td>총 공급가액</td><td><strong>${fmt(sub+vat)}원</strong></td></tr></table></div><div class="preview-footer">유효기간: 2주 &nbsp;|&nbsp; 인도장소: 귀사 하차도 &nbsp;|&nbsp; 결제조건: 납품 전 현금결제<br>입금은행: 신한은행 140-012-120571 (주)스마텍</div></div>`;
+  document.getElementById("previewContent").innerHTML=renderEmailContextPanel()+`<div class="preview-wrap"><div class="preview-header"><div><div class="preview-title">견 적 서 / QUOTATION</div><div class="preview-grade">등급: ${gl}</div></div><div class="preview-company"><strong style="font-size:15px">(주)스마텍 / SMARTECH</strong><br>경기도 수원시 신원로55 907호<br>충남 천안시 두정공원2길 49<br>Tel: 031-204-7170 &nbsp;·&nbsp; Fax: 031-206-7178<br>대표 이명재 &nbsp;·&nbsp; www.smartechvacuum.com</div></div><div class="preview-meta"><div><div><span class="meta-label">수&nbsp;&nbsp;&nbsp;신: </span><strong>${cn}</strong></div><div><span class="meta-label">담당자: </span>${cp} 님</div><div><span class="meta-label">연락처: </span>${ph}</div><div><span class="meta-label">E-mail: </span>${em}</div></div><div style="text-align:right"><div><span class="meta-label">견적 번호: </span>${qno}</div><div><span class="meta-label">견적 날짜: </span>${ds}</div><div><span class="meta-label">영업 담당: </span>이명재</div><div><span class="meta-label">핸드폰: </span>010-3194-7170</div></div></div><table class="preview-table"><thead><tr><th>No</th><th style="text-align:left">품명 및 규격</th><th>납기</th><th>수량</th><th>단가(원)</th><th>공급가액(원)</th></tr></thead><tbody>${rows}</tbody></table><div class="preview-totals"><table><tr><td>공급가액</td><td><strong>${fmt(sub)}원</strong></td></tr><tr><td>부가세 (10%)</td><td>${fmt(vat)}원</td></tr><tr class="grand-row"><td>총 공급가액</td><td><strong>${fmt(sub+vat)}원</strong></td></tr></table></div><div class="preview-footer">유효기간: 2주 &nbsp;|&nbsp; 인도장소: 귀사 하차도 &nbsp;|&nbsp; 결제조건: 납품 전 현금결제<br>입금은행: 신한은행 140-012-120571 (주)스마텍</div></div>`;
 }
 
 function copyText(){navigator.clipboard.writeText(document.getElementById("previewContent").innerText).then(()=>alert("견적서 내용이 클립보드에 복사되었습니다."));}
@@ -185,6 +185,55 @@ window.updateFloatCta = function(){
   document.getElementById("fcTotal").textContent = "₩"+fmt(grand);
   cta.classList.add("active");
   document.body.classList.add("has-cta");
+};
+
+// ---------- 미리보기에 원본 메일 + 회신 초안 컨텍스트 표시 ----------
+window.renderEmailContextPanel = function(){
+  const ctx = window.MK_EMAIL_CONTEXT;
+  if(!ctx || (!ctx.original && !ctx.reply_draft)) return "";
+  const esc = (s)=>String(s||"").replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[m]);
+  const origHtml = ctx.original
+    ? `<details class="pv-email" open>
+        <summary><strong>📩 고객 원본 메일</strong> ${ctx.subject_summary?`<span class="pv-sum">${esc(ctx.subject_summary)}</span>`:""}</summary>
+        <div class="pv-email-body">${esc(ctx.original).replace(/\n/g,"<br>")}</div>
+      </details>`
+    : "";
+  const reply = ctx.reply_draft;
+  const replyHtml = reply
+    ? `<details class="pv-email pv-reply" open>
+        <summary><strong>✉ 회신 초안</strong> <span class="pv-sum">${esc(reply.subject||"")}</span></summary>
+        <div class="pv-reply-body">
+          <textarea id="pvReplyText" rows="14" class="pv-reply-text">${esc(reply.body_text||"")}</textarea>
+          <div class="pv-reply-actions">
+            <button class="btn primary" type="button" onclick="copyPvReply()">📋 회신 복사 (Gmail 붙여넣기용)</button>
+            <button class="btn" type="button" onclick="copyPvReplyFull()">제목+본문 복사</button>
+          </div>
+          ${reply.open_questions && reply.open_questions.length ? `
+            <div class="pv-warn"><strong>⚠ 담당자 확인 필요:</strong><ul>${reply.open_questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ul></div>` : ""}
+        </div>
+      </details>`
+    : "";
+  return `<div class="pv-email-group no-print">${origHtml}${replyHtml}</div>`;
+};
+
+window.copyPvReply = function(){
+  const t = document.getElementById("pvReplyText");
+  if(!t) return;
+  t.select();
+  navigator.clipboard.writeText(t.value).then(
+    ()=>{ if(window.mkToast) mkToast("회신 본문 복사됨","ok"); else alert("복사됨"); },
+    ()=>{ document.execCommand("copy"); if(window.mkToast) mkToast("회신 본문 복사됨","ok"); }
+  );
+};
+window.copyPvReplyFull = function(){
+  const ctx = window.MK_EMAIL_CONTEXT;
+  const subj = ctx?.reply_draft?.subject || "";
+  const body = document.getElementById("pvReplyText")?.value || "";
+  const text = subj ? `제목: ${subj}\n\n${body}` : body;
+  navigator.clipboard.writeText(text).then(
+    ()=>{ if(window.mkToast) mkToast("제목+본문 복사됨","ok"); },
+    ()=>alert("복사 실패")
+  );
 };
 
 // ---------- 마지막 등급 복원 ----------

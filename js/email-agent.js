@@ -288,37 +288,65 @@ async function callTool(toolName, schema, systemPrompt, userText, extraUserBlock
   return { data: blk.input, usage: j.usage, model: j.model };
 }
 
-// 기존 고객 매칭 — 이메일(정확) 우선, 회사명(부분) 보조
-function matchExistingClient(customer){
-  if(!customer || !Array.isArray(window.MK_CLIENTS || null) && typeof MK_CLIENTS === "undefined") return null;
+// 메일 원문에서 이메일/회사명 후보 추출 (Agent 호출 전 사전 스캔용)
+function preScanEmailText(text){
+  const emails = (String(text||"").match(/[\w.+\-]+@[\w\-]+\.[\w.\-]+/g) || []).map(e=>e.toLowerCase());
+  const lines = String(text||"").split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const companies = [];
+  const companyRx = /(\(주\)|㈜|주식회사|Co\.?\s?,?\s?Ltd\.?|\bInc\.?|Corporation|Corp\.?|GmbH|S\.?A\.?|Limited)/i;
+  lines.forEach(l => {
+    if(companyRx.test(l) && l.length < 80) companies.push(l);
+  });
+  return { emails: [...new Set(emails)], companies };
+}
+
+// 매칭: (customer 객체) 또는 ({emails[], companies[]}) 모두 수용
+function matchExistingClient(input){
   const list = (typeof MK_CLIENTS !== "undefined") ? MK_CLIENTS : (window.MK_CLIENTS || []);
-  if(!list.length) return null;
-  const emailLC = (customer.email||"").trim().toLowerCase();
-  const companyRaw = (customer.company||"").trim();
-  const norm = s => (s||"").toLowerCase().replace(/[\s()㈜\(주\)·,./\-]/g,"");
-  const companyNorm = norm(companyRaw);
-  // 1차: 이메일 정확 매칭
-  if(emailLC){
-    const byEmail = list.find(c => (c.email||"").trim().toLowerCase() === emailLC);
-    if(byEmail) return byEmail;
+  if(!list || !list.length) return null;
+  const norm = s => (s||"").toLowerCase().replace(/[\s()㈜·,./\-]/g,"").replace(/\(주\)|주식회사|coltd|co\.,ltd|inc|corporation|corp|gmbh|limited/gi,"");
+
+  const emailList = [];
+  const companyList = [];
+  if(input && (Array.isArray(input.emails) || Array.isArray(input.companies))){
+    (input.emails||[]).forEach(e => emailList.push((e||"").trim().toLowerCase()));
+    (input.companies||[]).forEach(c => companyList.push(c));
+  } else if(input){
+    if(input.email) emailList.push((input.email||"").trim().toLowerCase());
+    if(input.company) companyList.push(input.company);
   }
-  // 2차: 이메일 도메인 일치 + 회사명 유사
-  if(emailLC.includes("@") && companyNorm){
-    const domain = emailLC.split("@")[1];
-    const byDomainCo = list.find(c => {
-      const ce = (c.email||"").toLowerCase();
-      return ce.endsWith("@"+domain) && norm(c.company).includes(companyNorm.slice(0,4));
-    });
-    if(byDomainCo) return byDomainCo;
+
+  // 1차: 이메일 정확 매칭
+  for(const e of emailList){
+    if(!e) continue;
+    const hit = list.find(c => (c.email||"").trim().toLowerCase() === e);
+    if(hit) return hit;
+  }
+  // 2차: 도메인 + 회사 유사
+  for(const e of emailList){
+    if(!e || !e.includes("@")) continue;
+    const domain = e.split("@")[1];
+    for(const co of companyList){
+      const coNorm = norm(co);
+      if(coNorm.length < 3) continue;
+      const hit = list.find(c => (c.email||"").toLowerCase().endsWith("@"+domain) && norm(c.company).includes(coNorm.slice(0,4)));
+      if(hit) return hit;
+    }
+    const hit = list.find(c => (c.email||"").toLowerCase().endsWith("@"+domain));
+    if(hit) return hit;
   }
   // 3차: 회사명 정규화 일치
-  if(companyNorm){
-    const byCompany = list.find(c => norm(c.company) === companyNorm);
-    if(byCompany) return byCompany;
-    // 부분 일치 (길이 6자 이상일 때만)
-    if(companyNorm.length >= 6){
-      const byPartial = list.find(c => norm(c.company).includes(companyNorm) || companyNorm.includes(norm(c.company)));
-      if(byPartial) return byPartial;
+  for(const co of companyList){
+    const coNorm = norm(co);
+    if(coNorm.length < 3) continue;
+    const exact = list.find(c => norm(c.company) === coNorm);
+    if(exact) return exact;
+    if(coNorm.length >= 5){
+      const partial = list.find(c => {
+        const cn = norm(c.company);
+        return cn && (cn.includes(coNorm) || coNorm.includes(cn));
+      });
+      if(partial) return partial;
     }
   }
   return null;
@@ -330,28 +358,58 @@ async function runEmailAgents(){
   if(!email){ out.innerHTML = `<div class="email-err">메일 본문을 붙여넣으세요.</div>`; return; }
   if(!window.MK_USER){ out.innerHTML = `<div class="email-err">로그인이 필요합니다. 상단 로그인 바에서 매직링크로 로그인하세요.</div>`; return; }
 
-  out.innerHTML = `<div class="email-step"><strong>Agent 1</strong> · 거래 등급 분류 및 고객정보 추출 중…</div>`;
+  // [1단계] 사전 스캔 — 원문에서 이메일/회사명 추출 → 고객 DB 조회 (Agent 호출 0)
+  out.innerHTML = `<div class="email-step"><strong>사전 조회</strong> · 기존 고객 DB 확인 중…</div>`;
+  const preHints = preScanEmailText(email);
+  const preMatched = matchExistingClient(preHints);
 
-  let g1;
-  try{
-    g1 = await callTool("classify_grade", CLASSIFY_SCHEMA, CLASSIFY_PROMPT,
-      "---- 메일 본문 시작 ----\n" + email + "\n---- 메일 본문 끝 ----");
-  }catch(e){
-    out.innerHTML = `<div class="email-err">Agent 1 실패: ${escapeHtml(e.message||String(e))}</div>`;
-    return;
-  }
-  const gradeData = g1.data;
+  let g1 = null;
+  let gradeData;
 
-  // 기존 고객 등급 우선 적용 — 회사명/이메일 매칭 시 DB 저장값으로 override
-  const matched = matchExistingClient(gradeData.customer);
-  if(matched){
-    gradeData._agent_grade = gradeData.grade;
-    gradeData._agent_confidence = gradeData.confidence;
-    gradeData.grade = matched.grade || gradeData.grade;
-    gradeData.confidence = 1.0;
-    gradeData._existing_client = matched;
-    gradeData.rationale = `[기존 고객 판정 우선] ${matched.company||""} — 저장된 등급(${matched.grade}) 적용. 원 Agent 판정: ${gradeData._agent_grade} (${Math.round((gradeData._agent_confidence||0)*100)}%) · ` + (gradeData.rationale||"");
-    out.innerHTML += `<div class="email-step"><strong>기존 고객 매칭</strong> · ${escapeHtml(matched.company||"")} — 등급 ${matched.grade} 자동 적용</div>`;
+  if(preMatched){
+    // 기존 고객 — Agent 1 생략, DB 저장값 사용
+    out.innerHTML += `<div class="email-step"><strong>기존 고객 발견</strong> · ${escapeHtml(preMatched.company||"")} — 저장된 등급 <b>${preMatched.grade||"dealer"}</b> 적용 · Agent 1 생략</div>`;
+    gradeData = {
+      grade: preMatched.grade || "dealer",
+      confidence: 1.0,
+      rationale: `기존 고객 DB 매칭 (회사: ${preMatched.company||""} / 이메일: ${preMatched.email||""}). 저장된 등급을 그대로 사용하며 분류 Agent 는 실행하지 않았습니다.`,
+      signals: [
+        preMatched.email ? ("email: "+preMatched.email) : null,
+        preMatched.company ? ("company: "+preMatched.company) : null
+      ].filter(Boolean),
+      customer: {
+        company: preMatched.company || null,
+        contact: preMatched.contact || null,
+        title:   preMatched.title || null,
+        phone:   preMatched.mobile || preMatched.office || preMatched.phone || null,
+        email:   preMatched.email || (preHints.emails[0] || null),
+        address: preMatched.address || null,
+      },
+      subject_summary: null,
+      _existing_client: preMatched,
+    };
+  } else {
+    // 신규 고객 — Agent 1 실행
+    out.innerHTML += `<div class="email-step"><strong>신규 고객</strong> · Agent 1 로 거래 등급 분류 및 고객정보 추출 중…</div>`;
+    try{
+      g1 = await callTool("classify_grade", CLASSIFY_SCHEMA, CLASSIFY_PROMPT,
+        "---- 메일 본문 시작 ----\n" + email + "\n---- 메일 본문 끝 ----");
+    }catch(e){
+      out.innerHTML = `<div class="email-err">Agent 1 실패: ${escapeHtml(e.message||String(e))}</div>`;
+      return;
+    }
+    gradeData = g1.data;
+    // Agent 1 결과로 재확인 (사전 스캔에서 놓친 매칭이 있는지)
+    const postMatch = matchExistingClient(gradeData.customer);
+    if(postMatch){
+      gradeData._agent_grade = gradeData.grade;
+      gradeData._agent_confidence = gradeData.confidence;
+      gradeData.grade = postMatch.grade || gradeData.grade;
+      gradeData.confidence = 1.0;
+      gradeData._existing_client = postMatch;
+      gradeData.rationale = `[Agent 1 실행 후 기존 고객 발견] ${postMatch.company||""} — 저장된 등급(${postMatch.grade}) 적용. Agent 1 판정: ${gradeData._agent_grade} (${Math.round((gradeData._agent_confidence||0)*100)}%) · ` + (gradeData.rationale||"");
+      out.innerHTML += `<div class="email-step"><strong>사후 매칭</strong> · Agent 1 이 추출한 정보로 DB 재조회 → ${escapeHtml(postMatch.company||"")} 매칭. 등급 ${postMatch.grade} 적용</div>`;
+    }
   }
 
   // Agent 1.5 요구사항 추출
@@ -600,10 +658,14 @@ function priceForGrade(p, grade){
   return Math.round(p[g]*m/100);
 }
 
-function applyEmailProposal(){
+async function applyEmailProposal(){
   if(!MK_EMAIL_PROPOSAL){ alert("적용할 제안이 없습니다."); return; }
-  const { grade, customer, items } = MK_EMAIL_PROPOSAL;
-  // 고객정보 채움
+  const { grade, customer, items, existingClient } = MK_EMAIL_PROPOSAL;
+
+  // [무조건 저장] 고객 — 기존이면 업데이트, 신규면 생성
+  try{ await autoSaveClient(customer, grade, existingClient); }
+  catch(e){ console.warn("고객 자동 저장 실패(진행 계속):", e); }
+
   if(customer){
     setIfExists("customerName", customer.company);
     const contact = [customer.contact, customer.title].filter(Boolean).join(" ").trim();
@@ -611,19 +673,16 @@ function applyEmailProposal(){
     setIfExists("contactPhone", customer.phone);
     setIfExists("contactEmail", customer.email);
   }
-  // 등급 설정
   if(grade && typeof setGrade==="function") setGrade(grade);
-  // 장바구니 교체 여부
-  const replace = cart.length===0 || confirm("기존 장바구니를 비우고 에이전트 제안으로 교체할까요? 취소 시 기존 품목에 추가됩니다.");
-  if(replace) cart.length = 0;
+
+  // 장바구니 — 무조건 에이전트 제안으로 교체 (저장 스킵 옵션 없음)
+  cart.length = 0;
   items.forEach(it=>{
-    const ex = cart.find(c=>c.partNo===it.partNo);
-    if(ex) ex.qty += it.qty;
-    else cart.push({ ...it.prod, qty: it.qty, customPrice: null });
+    cart.push({ ...it.prod, qty: it.qty, customPrice: null });
   });
   renderCart();
   document.getElementById("cartCount").textContent = cart.reduce((s,i)=>s+i.qty, 0);
-  // 원본 메일 + 회신 초안을 견적서 컨텍스트로 전달
+
   window.MK_EMAIL_CONTEXT = {
     original: MK_EMAIL_PROPOSAL._emailBody || "",
     subject_summary: MK_EMAIL_PROPOSAL._gradeRaw?.subject_summary || "",
@@ -631,4 +690,38 @@ function applyEmailProposal(){
     customer: MK_EMAIL_PROPOSAL.customer || {}
   };
   switchTab("quote");
+}
+
+// 고객 자동 저장 — 기존 매칭 있으면 update, 없으면 insert
+async function autoSaveClient(customer, grade, existingClient){
+  if(!window.MK_USER) return;
+  if(!customer) return;
+  const co = (customer.company||"").trim();
+  const em = (customer.email||"").trim();
+  if(!co && !em && !customer.contact) return;
+
+  const payload = {
+    company: co || null,
+    contact: customer.contact || null,
+    title: customer.title || null,
+    phone: customer.phone || null,
+    mobile: customer.phone && /^01[016789]/.test((customer.phone||"").replace(/[^\d]/g,"")) ? customer.phone : null,
+    office: customer.phone && !/^01[016789]/.test((customer.phone||"").replace(/[^\d]/g,"")) ? customer.phone : null,
+    email: em || null,
+    address: customer.address || null,
+    grade: grade || existingClient?.grade || "dealer",
+  };
+  // 빈 값으로 기존 데이터를 덮어쓰지 않도록 update 시 null 필드는 제거
+  const targetId = existingClient?.id;
+  if(targetId){
+    const patch = {};
+    Object.keys(payload).forEach(k=>{ if(payload[k]!=null && payload[k]!=="") patch[k]=payload[k]; });
+    // 등급은 기존 DB 값이 있으면 변경하지 않는다 (기존 고객 정책)
+    if(existingClient?.grade) delete patch.grade;
+    if(Object.keys(patch).length === 0) return;
+    await sb().from("smartech_clients").update(patch).eq("id", targetId);
+  } else {
+    await sb().from("smartech_clients").insert({ ...payload, user_id: window.MK_USER.id });
+  }
+  if(typeof loadClients === "function") await loadClients();
 }
