@@ -106,6 +106,24 @@ body{
   content:"";position:absolute;left:0;right:0;bottom:-1px;
   height:3px;background:var(--mk-navy);
 }
+/* Primary flow tabs (메일 → 견적 → 미리보기) */
+.tab.primary{
+  color:var(--mk-navy);font-weight:600;
+  padding-left:14px;padding-right:18px;
+}
+.tab.primary .tab-step{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;margin-right:8px;
+  background:var(--mk-rule);color:var(--mk-navy);
+  font-family:var(--mono);font-size:10px;font-weight:700;
+  transition:background .15s, color .15s;
+}
+.tab.primary:hover .tab-step{background:var(--mk-navy);color:#fff}
+.tab.primary.active .tab-step{background:var(--mk-accent);color:var(--mk-navy)}
+.tab-divider{
+  display:inline-block;width:1px;align-self:stretch;margin:6px 14px;
+  background:var(--mk-rule);
+}
 
 .panel{display:none}.panel.active{display:block}
 
@@ -977,7 +995,9 @@ tr:hover td{background:var(--mk-bg-soft);box-shadow:inset 3px 0 0 var(--mk-navy)
 ============================================================ */
 .tab-trigger{display:none}
 .tab-backdrop{display:none}
+.bottom-nav{display:none}
 .m-price{display:none}
+.m-desc{display:none}
 
 @media (max-width:768px){
   /* Hide the scrolling tabs bar — replaced by dropdown */
@@ -1008,6 +1028,18 @@ tr:hover td{background:var(--mk-bg-soft);box-shadow:inset 3px 0 0 var(--mk-navy)
     background:var(--mk-bg-alt);color:var(--mk-navy);font-weight:700;
     box-shadow:inset 4px 0 0 var(--mk-navy);
   }
+  .tabs .tab.primary .tab-step{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:20px;height:20px;margin-right:10px;
+    background:var(--mk-accent);color:var(--mk-navy);
+    font-family:var(--mono);font-size:11px;font-weight:700;
+  }
+  .tabs .tab.primary{padding-left:18px}
+  .tabs .tab-divider{
+    display:block;height:1px;width:auto;margin:6px 0;
+    background:var(--mk-rule);align-self:auto;
+    border-top:1px dashed var(--mk-rule);background:transparent;
+  }
   .tab-backdrop{
     display:none;position:fixed;inset:0;z-index:99;
     background:rgba(5,28,44,0.42);
@@ -1016,36 +1048,62 @@ tr:hover td{background:var(--mk-bg-soft);box-shadow:inset 3px 0 0 var(--mk-navy)
   .tab-backdrop.open{display:block}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
-  /* Dropdown trigger button (current tab name) - navy, sticky */
-  .tab-trigger{
-    display:flex;align-items:center;gap:10px;
-    width:100%;padding:16px 18px;min-height:56px;
-    background:var(--mk-navy);border:none;
-    border-bottom:3px solid var(--mk-accent);
-    font-family:var(--sans);font-size:15px;font-weight:700;
-    color:#fff;cursor:pointer;text-align:left;
-    position:sticky;top:0;z-index:30;
-    box-shadow:0 4px 14px rgba(5,28,44,0.25);
-    letter-spacing:0.01em;
+  /* Old tab-trigger hidden on mobile (replaced by bottom-nav) */
+  .tab-trigger{display:none}
+  /* Old floating CTA hidden — bottom-nav takes over */
+  .float-cta, .float-cta.active{display:none !important}
+  body.has-cta .container{padding-bottom:0}
+
+  /* ---- Bottom flow navigation (primary: 메일 → 견적 → 미리보기) ---- */
+  .bottom-nav{
+    display:flex;position:fixed;left:0;right:0;bottom:0;
+    background:var(--mk-navy);z-index:80;
+    padding-bottom:env(safe-area-inset-bottom);
+    box-shadow:0 -6px 20px rgba(0,0,0,0.22);
+    border-top:3px solid var(--mk-accent);
   }
-  .tab-trigger .tt-label{flex:1;color:#fff}
-  .tab-trigger::before{
-    content:"☰";display:inline-block;
-    font-size:18px;margin-right:4px;opacity:0.9;
+  .bn-btn{
+    flex:1;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:2px;
+    padding:10px 6px 10px;min-height:60px;
+    background:transparent;border:none;border-right:1px solid rgba(255,255,255,0.08);
+    color:rgba(255,255,255,0.72);cursor:pointer;position:relative;
+    font-family:var(--sans);
   }
-  .tab-trigger .tt-count{
+  .bn-btn:last-child{border-right:none}
+  .bn-btn:active{background:rgba(255,255,255,0.08)}
+  .bn-btn.active{color:#fff;background:rgba(255,255,255,0.06)}
+  .bn-btn.active::after{
+    content:"";position:absolute;top:0;left:10%;right:10%;
+    height:3px;background:var(--mk-accent);
+  }
+  .bn-step{
     font-family:var(--mono);font-size:10px;font-weight:700;
+    background:rgba(255,255,255,0.18);color:#fff;
+    width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;
+    letter-spacing:0;
+  }
+  .bn-btn.active .bn-step{background:var(--mk-accent);color:var(--mk-navy)}
+  .bn-icon{
+    font-size:20px;line-height:1;display:inline-block;
+    color:rgba(255,255,255,0.9);height:18px;
+  }
+  .bn-label{
+    font-size:10.5px;font-weight:600;letter-spacing:0.04em;margin-top:2px;
+  }
+  .bn-badge{
+    position:absolute;top:6px;right:calc(50% - 22px);
     background:#CF1F2D;color:#fff;
-    padding:3px 8px;letter-spacing:0.06em;border-radius:0;
+    font-family:var(--mono);font-size:9px;font-weight:700;
+    min-width:16px;height:16px;padding:0 4px;
+    display:inline-flex;align-items:center;justify-content:center;
+    letter-spacing:0;
   }
-  .tab-trigger .tt-caret{
-    font-size:14px;color:#fff;
-    transition:transform .2s;opacity:0.85;
-  }
-  .tab-trigger[aria-expanded="true"] .tt-caret{
-    transform:rotate(180deg);
-  }
-  .tab-trigger:active{background:var(--mk-navy-2)}
+  /* lift content so bottom-nav doesn't cover last row */
+  body{padding-bottom:calc(70px + env(safe-area-inset-bottom))}
+
+  /* Bottom drawer for "더보기": reposition the .tabs above bottom-nav */
+  .tabs{bottom:calc(70px + env(safe-area-inset-bottom))}
 
   /* Simplified search table on mobile: show only 단가 + 담기 */
   #tab-search .col-no,
@@ -1076,6 +1134,11 @@ tr:hover td{background:var(--mk-bg-soft);box-shadow:inset 3px 0 0 var(--mk-navy)
     letter-spacing:0.1em;text-transform:uppercase;
     vertical-align:middle;
   }
+  .m-desc{
+    display:block;margin-top:4px;font-size:11.5px;
+    color:var(--mk-muted);line-height:1.4;
+    max-height:2.8em;overflow:hidden;
+  }
   #tab-search .add-btn{
     padding:10px 12px;font-size:11px;min-height:40px;white-space:nowrap;
   }
@@ -1091,7 +1154,20 @@ tr:hover td{background:var(--mk-bg-soft);box-shadow:inset 3px 0 0 var(--mk-navy)
 .auth-input{
   padding:6px 10px;border:1px solid rgba(255,255,255,0.3);
   background:rgba(255,255,255,0.08);color:#fff;border-radius:0;
-  font-family:var(--mono);font-size:11px;min-width:200px;outline:none;
+  font-family:var(--mono);font-size:11px;min-width:140px;outline:none;
+}
+.auth-input[type="password"]{min-width:110px;letter-spacing:0.15em}
+.auth-bar .btn-mini.primary{
+  background:#fff;color:var(--mk-navy);border-color:#fff;font-weight:700;
+}
+.auth-bar .btn-mini.primary:hover{background:#BAE3F5;color:var(--mk-navy)}
+@media (max-width:768px){
+  .auth-bar{
+    width:100%;flex-wrap:wrap;gap:6px;margin-top:8px;
+  }
+  .auth-input{flex:1 1 160px;min-width:0;font-size:14px;padding:10px 12px}
+  .auth-bar .btn-mini{flex:1 1 auto;min-height:40px;font-size:12px}
+  .auth-email{flex:1 1 100%;font-size:12px}
 }
 .auth-input::placeholder{color:rgba(255,255,255,0.5)}
 .auth-input:focus{border-color:#fff;background:rgba(255,255,255,0.15)}
@@ -1103,4 +1179,90 @@ tr:hover td{background:var(--mk-bg-soft);box-shadow:inset 3px 0 0 var(--mk-navy)
   color:#fff;font-family:var(--mono);font-size:11px;
   padding:4px 10px;background:rgba(255,255,255,0.1);
   border:1px solid rgba(255,255,255,0.2);
+}
+
+/* ============================================================
+   Email reply draft (Agent 3)
+============================================================ */
+.email-reply-draft{
+  margin-top:20px;border:1px solid var(--mk-rule);
+  background:var(--mk-bg-soft);
+}
+.email-reply-draft > summary{
+  padding:14px 18px;cursor:pointer;font-weight:600;
+  font-family:var(--serif);font-size:15px;color:var(--mk-navy);
+  background:#fff;border-bottom:1px solid var(--mk-rule);
+  list-style:none;position:relative;
+}
+.email-reply-draft > summary::-webkit-details-marker{display:none}
+.email-reply-draft > summary::after{
+  content:"▾";position:absolute;right:18px;top:50%;
+  transform:translateY(-50%);
+  font-size:12px;color:var(--mk-muted);
+  transition:transform .2s;
+}
+.email-reply-draft[open] > summary::after{transform:translateY(-50%) rotate(180deg)}
+.reply-conf{
+  font-family:var(--mono);font-size:10px;color:var(--mk-muted);
+  margin-left:10px;letter-spacing:0.06em;font-weight:500;
+}
+.reply-body{padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.reply-label{
+  font-family:var(--sans);font-size:10px;font-weight:700;
+  color:var(--mk-muted);text-transform:uppercase;letter-spacing:0.12em;
+  margin-top:4px;
+}
+.reply-subject{
+  padding:10px 12px;border:1px solid var(--mk-rule);border-radius:0;
+  background:#fff;
+  font-family:var(--sans);font-size:13px;font-weight:600;
+  color:var(--mk-ink);outline:none;
+}
+.reply-text{
+  padding:14px;border:1px solid var(--mk-rule);border-radius:0;
+  background:#fff;
+  font-family:var(--sans);font-size:13px;line-height:1.7;
+  color:var(--mk-ink);
+  min-height:300px;resize:vertical;outline:none;
+  white-space:pre-wrap;
+}
+.reply-subject:focus, .reply-text:focus{border-color:var(--mk-navy)}
+.reply-warn{
+  padding:10px 14px;background:#FFF4D6;
+  border-left:3px solid #E6C96E;
+  font-size:12px;color:#5B4500;line-height:1.55;
+}
+.reply-warn ul{margin-top:4px;padding-left:20px}
+.reply-warn li{margin-bottom:2px}
+.reply-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.reply-actions .btn{padding:10px 16px;min-height:40px}
+
+@media (max-width:768px){
+  .reply-body{padding:12px 14px}
+  .reply-text{font-size:14px;min-height:260px}
+  .reply-actions .btn{flex:1 1 auto}
+}
+
+/* ============================================================
+   Client form (manual add/edit)
+============================================================ */
+.client-form{
+  padding:20px 0;margin-top:12px;
+  border-top:2px solid var(--mk-navy);
+  background:var(--mk-bg-soft);
+  padding:20px 24px;margin:16px -24px 20px;
+}
+.client-form .form-grid{grid-template-columns:repeat(3,1fr);gap:14px 20px}
+.client-form .form-group input,
+.client-form .form-group select{
+  padding:8px 10px;border:1px solid var(--mk-rule);border-radius:0;
+  font-size:12px;font-family:var(--sans);background:#fff;outline:none;
+  color:var(--mk-ink);
+}
+.client-form .form-group input:focus,
+.client-form .form-group select:focus{border-color:var(--mk-navy)}
+.form-select{
+  padding:8px 10px;border:1px solid var(--mk-rule);border-radius:0;
+  font-size:12px;font-family:var(--sans);background:#fff;outline:none;
+  color:var(--mk-ink);
 }

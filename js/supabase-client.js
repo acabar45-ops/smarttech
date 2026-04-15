@@ -38,6 +38,19 @@ function initSupabase(){
   });
 }
 
+// 이메일+비밀번호 로그인
+async function mkSignInPw(email, password){
+  const { data, error } = await window.MK_SB.auth.signInWithPassword({ email, password });
+  if(error) throw error;
+  return data;
+}
+// 회원가입 (이메일 인증 off 전제 → 즉시 세션 발급)
+async function mkSignUp(email, password){
+  const { data, error } = await window.MK_SB.auth.signUp({ email, password });
+  if(error) throw error;
+  return data;
+}
+// 매직링크 (백업용으로 유지)
 async function mkSignIn(email){
   const { error } = await window.MK_SB.auth.signInWithOtp({
     email,
@@ -48,7 +61,6 @@ async function mkSignIn(email){
 async function mkSignOut(){
   await window.MK_SB.auth.signOut();
   window.MK_USER = null;
-  // 페이지 새로고침으로 메모리 상태 초기화
   window.location.reload();
 }
 
@@ -60,15 +72,26 @@ async function mkCallClaude(body){
   const { data: s } = await window.MK_SB.auth.getSession();
   const token = s.session?.access_token;
   if(!token){ throw new Error("세션이 만료되었습니다. 다시 로그인해 주세요."); }
-  const res = await fetch(`${SB_URL}/functions/v1/${SB_FN}`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "authorization": `Bearer ${token}`,
-      "apikey": SB_ANON,
-    },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(()=>controller.abort(), 90000); // 90s hard timeout
+  let res;
+  try{
+    res = await fetch(`${SB_URL}/functions/v1/${SB_FN}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${token}`,
+        "apikey": SB_ANON,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch(e){
+    clearTimeout(timeout);
+    if(e.name === "AbortError") throw new Error("요청 타임아웃 (90초 초과)");
+    throw e;
+  }
+  clearTimeout(timeout);
   const text = await res.text();
   let json; try{ json = JSON.parse(text); }catch(e){ throw new Error("프록시 응답 파싱 실패: "+text.slice(0,200)); }
   if(!res.ok){

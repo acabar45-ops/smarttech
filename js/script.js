@@ -31,12 +31,10 @@ function doSearch(){
   const s=document.getElementById("sheetFilter").value;
   filteredProducts=ALL_PRODUCTS.filter(p=>(!q||p.partNo.toLowerCase().includes(q)||p.description.toLowerCase().includes(q))&&(!s||p.sheet===s));
   document.getElementById("resultCount").textContent=`${filteredProducts.length}개 품목 (최대 100개 표시)`;
-  const gLabel = currentGrade==="dealer" ? "Dealer" : currentGrade==="oem" ? "OEM" : "End User";
   document.getElementById("searchResults").innerHTML=filteredProducts.slice(0,100).map(p=>{
-    const cur = getP(p);
     return `<tr>
       <td class="col-no" style="color:#aaa;font-size:11px">${p.no}</td>
-      <td class="col-part"><span class="partno">${p.partNo}</span><br><span class="sheet-tag">${p.sheet.replace("2026 Price_","")}</span><div class="m-price">${fmt(cur)}원 <span class="m-price-tag">${gLabel}</span></div></td>
+      <td class="col-part"><span class="partno">${p.partNo}</span><br><span class="sheet-tag">${p.sheet.replace("2026 Price_","")}</span><div class="m-price">${fmt(p.endUser)}원 <span class="m-price-tag">원가</span></div><div class="m-desc">${p.description}</div></td>
       <td class="col-desc" style="max-width:280px">${p.description}</td>
       <td class="col-dealer price-cell">${fmt(p.dealer)}</td>
       <td class="col-oem price-cell">${fmt(p.oem)}</td>
@@ -90,7 +88,6 @@ function setGrade(g){
   const map={dealer:"gradeDealer",oem:"gradeOEM",enduser:"gradeEndUser"};
   Object.entries(map).forEach(([k,id])=>{const el=document.getElementById(id);if(el)el.classList.toggle("selected",k===g);});
   renderCart();
-  if(typeof doSearch==="function") doSearch();
   if(selectedIndustry){const ind=INDUSTRIES.find(i=>i.id===selectedIndustry);if(ind)renderRec(ind);}
 }
 
@@ -100,11 +97,13 @@ const qDate=()=>{const n=new Date();return`${String(n.getFullYear()).slice(2)}${
 
 function switchTab(t){
   document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab===t));
+  document.querySelectorAll(".bn-btn").forEach(el=>el.classList.toggle("active",el.dataset.tab===t));
   document.querySelectorAll(".panel").forEach(el=>el.classList.toggle("active",el.id==="tab-"+t));
   const active = document.querySelector(`.tab[data-tab="${t}"]`);
   const lbl = document.getElementById("ttLabel");
   if(active && lbl) lbl.textContent = active.textContent.replace(/\s*\d+\s*$/,"").trim();
   toggleTabMenu(false);
+  window.scrollTo(0,0);
   if(window.MK_ON_TAB)window.MK_ON_TAB(t);
 }
 
@@ -169,6 +168,11 @@ window.updateFloatCta = function(){
     if(count>0){ ttCount.textContent = count+"건"; ttCount.style.display = ""; }
     else{ ttCount.style.display = "none"; }
   }
+  const bnBadge = document.getElementById("bnBadge");
+  if(bnBadge){
+    if(count>0){ bnBadge.textContent = count; bnBadge.style.display = ""; }
+    else{ bnBadge.style.display = "none"; }
+  }
   if(!cta) return;
   if(count === 0){
     cta.classList.remove("active");
@@ -198,3 +202,6 @@ document.getElementById("quoteNo").value=qDate();
 renderIndustries();
 doSearch();
 updateFloatCta();
+
+// 기본 활성 탭인 email에 맞춰 bottom-nav 상태 동기화
+document.querySelectorAll(".bn-btn").forEach(el=>el.classList.toggle("active",el.dataset.tab==="email"));

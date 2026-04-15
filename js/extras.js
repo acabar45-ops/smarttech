@@ -175,6 +175,76 @@ function currentFormCustomer(){
   };
 }
 
+// ---------- 수동 고객 등록/편집 ----------
+const CF_FIELDS = ["Company","CompanyEn","Contact","Title","Department","Grade","Mobile","Office","Fax","Email","Address","Website","Memo"];
+function cfGet(name){ const el=document.getElementById("cf"+name); return el?(el.value||"").trim():""; }
+function cfSet(name,v){ const el=document.getElementById("cf"+name); if(el) el.value = v||""; }
+
+function toggleClientForm(show){
+  const form = document.getElementById("clientForm");
+  if(!form) return;
+  const visible = show!==false && form.style.display==="none";
+  form.style.display = visible ? "" : "none";
+  if(visible){
+    CF_FIELDS.forEach(n=>cfSet(n, n==="Grade"?"dealer":""));
+    document.getElementById("clientEditId").value = "";
+    document.getElementById("clientFormTitle").textContent = "고객 신규 등록";
+    document.getElementById("cfCompany").focus();
+  }
+}
+
+function editClient(id){
+  const c = MK_CLIENTS.find(x=>x.id===id); if(!c) return;
+  const form = document.getElementById("clientForm");
+  if(form) form.style.display = "";
+  document.getElementById("clientEditId").value = id;
+  document.getElementById("clientFormTitle").textContent = "고객 정보 편집";
+  cfSet("Company", c.company);
+  cfSet("CompanyEn", c.company_en);
+  cfSet("Contact", c.contact);
+  cfSet("Title", c.title);
+  cfSet("Department", c.department);
+  cfSet("Grade", c.grade || "dealer");
+  cfSet("Mobile", c.mobile);
+  cfSet("Office", c.office);
+  cfSet("Fax", c.fax);
+  cfSet("Email", c.email);
+  cfSet("Address", c.address);
+  cfSet("Website", c.website);
+  cfSet("Memo", c.memo);
+}
+
+async function submitClientForm(){
+  if(!requireUser()) return;
+  const payload = {
+    company: cfGet("Company"),
+    company_en: cfGet("CompanyEn") || null,
+    contact: cfGet("Contact") || null,
+    title: cfGet("Title") || null,
+    department: cfGet("Department") || null,
+    grade: cfGet("Grade") || "dealer",
+    mobile: cfGet("Mobile") || null,
+    office: cfGet("Office") || null,
+    fax: cfGet("Fax") || null,
+    email: cfGet("Email") || null,
+    address: cfGet("Address") || null,
+    website: cfGet("Website") || null,
+    memo: cfGet("Memo") || null,
+    phone: cfGet("Mobile") || cfGet("Office") || null,
+  };
+  if(!payload.company){ alert("회사명은 필수입니다."); return; }
+  const id = document.getElementById("clientEditId").value;
+  if(id){
+    const { error } = await sb().from("smartech_clients").update(payload).eq("id", id);
+    if(error){ alert("저장 실패: "+error.message); return; }
+  } else {
+    const { error } = await sb().from("smartech_clients").insert({ ...payload, user_id: window.MK_USER.id });
+    if(error){ alert("저장 실패: "+error.message); return; }
+  }
+  toggleClientForm(false);
+  await loadClients();
+}
+
 async function saveCurrentCustomer(){
   if(!requireUser()) return;
   const c = currentFormCustomer();
@@ -221,6 +291,7 @@ function renderClients(){
       <td><span class="sheet-tag">${upd}</span></td>
       <td style="text-align:right">
         <button class="add-btn" onclick="loadClient('${c.id}')">불러오기</button>
+        <button class="add-btn" onclick="editClient('${c.id}')">편집</button>
         <button class="del-btn" onclick="deleteClient('${c.id}')">삭제</button>
       </td>
     </tr>`;
@@ -494,6 +565,11 @@ function refreshEngineStatus(){
   }
 }
 
+// 단일 사용자 전용 (고정 계정)
+const MK_OWNER_EMAIL = "rokmclmj@gmail.com";
+// 사용자 입력을 Supabase 최소 요건(6자+)에 맞춰 변환
+function mkPwTransform(pin){ return "smartech-quote-" + String(pin||""); }
+
 function renderAuthBar(){
   const bar = document.getElementById("authBar"); if(!bar) return;
   if(window.MK_USER){
@@ -502,16 +578,38 @@ function renderAuthBar(){
       <button class="btn-mini" onclick="mkSignOut()">로그아웃</button>`;
   } else {
     bar.innerHTML = `
-      <input type="email" id="loginEmail" placeholder="you@company.com" class="auth-input" onkeydown="if(event.key==='Enter')doSignIn()">
-      <button class="btn-mini" onclick="doSignIn()">매직링크 전송</button>`;
+      <input type="password" id="loginPw" placeholder="비밀번호" class="auth-input" autocomplete="current-password" inputmode="numeric" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="btn-mini primary" onclick="doLogin()">로그인</button>`;
   }
 }
-async function doSignIn(){
-  const email = (document.getElementById("loginEmail").value||"").trim();
-  if(!email){ alert("이메일을 입력하세요."); return; }
-  try{ await mkSignIn(email); alert("매직링크를 이메일로 전송했습니다. 받은편지함을 확인해 주세요."); }
-  catch(e){ alert("로그인 요청 실패: "+(e.message||e)); }
+async function doLogin(){
+  const pin = (document.getElementById("loginPw").value||"").trim();
+  if(!pin){ alert("비밀번호를 입력하세요."); return; }
+  const pw = mkPwTransform(pin);
+  try{
+    await mkSignInPw(MK_OWNER_EMAIL, pw);
+  }catch(e){
+    const msg = String(e.message||e);
+    if(/invalid login credentials/i.test(msg)){
+      // 계정이 없을 수 있으니 자동 가입 시도
+      if(confirm("계정이 아직 없습니다. 이 비밀번호로 계정을 새로 만들까요?")){
+        try{
+          const { data } = await mkSignUp(MK_OWNER_EMAIL, pw);
+          if(data?.session){
+            // 자동 로그인 성공
+          } else {
+            alert("계정 생성 요청됨. Supabase 대시보드에서 Confirm email을 OFF로 설정 후 다시 로그인하세요.");
+          }
+        }catch(e2){
+          alert("계정 생성 실패: "+(e2.message||e2));
+        }
+      }
+    } else {
+      alert("로그인 실패: "+msg);
+    }
+  }
 }
+async function doSignIn(){ return doLogin(); }
 
 window.MK_ON_AUTH = async function(user){
   renderAuthBar();
