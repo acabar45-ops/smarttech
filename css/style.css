@@ -971,3 +971,136 @@ tr:hover td{background:var(--mk-bg-soft);box-shadow:inset 3px 0 0 var(--mk-navy)
   font-size:12px;letter-spacing:0.02em;
 }
 .help-h2 + .help-p, .help-h3 + .help-p{ margin-top:4px }
+
+/* ============================================================
+   Tab dropdown trigger (desktop hidden, mobile visible)
+============================================================ */
+.tab-trigger{display:none}
+.tab-backdrop{display:none}
+.m-price{display:none}
+
+@media (max-width:768px){
+  /* Hide the scrolling tabs bar — replaced by dropdown */
+  .tabs{
+    display:none;position:absolute;left:12px;right:12px;top:100%;
+    flex-direction:column;gap:0;margin:6px 0 0;
+    background:#fff;border:1px solid var(--mk-rule);
+    box-shadow:0 12px 32px rgba(5,28,44,0.18);
+    border-radius:0;z-index:100;
+    max-height:70vh;overflow-y:auto;
+    position:fixed;top:auto;bottom:0;left:0;right:0;
+    margin:0;border-bottom:none;border-left:none;border-right:none;
+    border-top:3px solid var(--mk-navy);
+    padding-bottom:env(safe-area-inset-bottom);
+    transform:translateY(100%);transition:transform .22s ease-out;
+    -webkit-mask-image:none;mask-image:none;
+  }
+  .tabs.open{display:flex;transform:translateY(0)}
+  .tabs .tab{
+    width:100%;border:none;border-bottom:1px solid var(--mk-rule);
+    padding:16px 20px;text-align:left;font-size:14px;
+    letter-spacing:0.02em;text-transform:none;color:var(--mk-ink);
+    min-height:52px;justify-content:flex-start;
+    display:flex;align-items:center;gap:10px;
+  }
+  .tabs .tab::after{display:none}
+  .tabs .tab.active{
+    background:var(--mk-bg-alt);color:var(--mk-navy);font-weight:700;
+    box-shadow:inset 4px 0 0 var(--mk-navy);
+  }
+  .tab-backdrop{
+    display:none;position:fixed;inset:0;z-index:99;
+    background:rgba(5,28,44,0.42);
+    animation:fadeIn .18s ease-out;
+  }
+  .tab-backdrop.open{display:block}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+  /* Dropdown trigger button (current tab name) - navy, sticky */
+  .tab-trigger{
+    display:flex;align-items:center;gap:10px;
+    width:100%;padding:16px 18px;min-height:56px;
+    background:var(--mk-navy);border:none;
+    border-bottom:3px solid var(--mk-accent);
+    font-family:var(--sans);font-size:15px;font-weight:700;
+    color:#fff;cursor:pointer;text-align:left;
+    position:sticky;top:0;z-index:30;
+    box-shadow:0 4px 14px rgba(5,28,44,0.25);
+    letter-spacing:0.01em;
+  }
+  .tab-trigger .tt-label{flex:1;color:#fff}
+  .tab-trigger::before{
+    content:"☰";display:inline-block;
+    font-size:18px;margin-right:4px;opacity:0.9;
+  }
+  .tab-trigger .tt-count{
+    font-family:var(--mono);font-size:10px;font-weight:700;
+    background:#CF1F2D;color:#fff;
+    padding:3px 8px;letter-spacing:0.06em;border-radius:0;
+  }
+  .tab-trigger .tt-caret{
+    font-size:14px;color:#fff;
+    transition:transform .2s;opacity:0.85;
+  }
+  .tab-trigger[aria-expanded="true"] .tt-caret{
+    transform:rotate(180deg);
+  }
+  .tab-trigger:active{background:var(--mk-navy-2)}
+
+  /* Simplified search table on mobile: show only 단가 + 담기 */
+  #tab-search .col-no,
+  #tab-search .col-desc,
+  #tab-search .col-dealer,
+  #tab-search .col-oem,
+  #tab-search .col-enduser{display:none}
+  #tab-search th:nth-child(1),
+  #tab-search th:nth-child(3),
+  #tab-search th:nth-child(4),
+  #tab-search th:nth-child(5),
+  #tab-search th:nth-child(6){display:none}
+  #tab-search table{min-width:0}
+  #tab-search td{padding:14px 12px;vertical-align:middle}
+  #tab-search .col-part{flex:1}
+  #tab-search .partno{font-size:12px}
+  #tab-search .sheet-tag{display:inline-block;margin-right:6px}
+  .m-price{
+    display:block;margin-top:6px;
+    font-family:var(--mono);font-size:15px;font-weight:700;
+    color:var(--mk-navy);font-variant-numeric:tabular-nums;
+    letter-spacing:-0.01em;
+  }
+  .m-price-tag{
+    display:inline-block;margin-left:6px;padding:1px 6px;
+    background:var(--mk-bg-alt);color:var(--mk-muted);
+    font-family:var(--sans);font-size:9px;font-weight:700;
+    letter-spacing:0.1em;text-transform:uppercase;
+    vertical-align:middle;
+  }
+  #tab-search .add-btn{
+    padding:10px 12px;font-size:11px;min-height:40px;white-space:nowrap;
+  }
+}
+
+/* ============================================================
+   Auth bar
+============================================================ */
+.auth-bar{
+  margin-left:auto;display:flex;align-items:center;gap:8px;
+  color:#fff;font-size:11px;
+}
+.auth-input{
+  padding:6px 10px;border:1px solid rgba(255,255,255,0.3);
+  background:rgba(255,255,255,0.08);color:#fff;border-radius:0;
+  font-family:var(--mono);font-size:11px;min-width:200px;outline:none;
+}
+.auth-input::placeholder{color:rgba(255,255,255,0.5)}
+.auth-input:focus{border-color:#fff;background:rgba(255,255,255,0.15)}
+.auth-bar .btn-mini{
+  background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.3);
+}
+.auth-bar .btn-mini:hover{background:#fff;color:var(--mk-navy);border-color:#fff}
+.auth-email{
+  color:#fff;font-family:var(--mono);font-size:11px;
+  padding:4px 10px;background:rgba(255,255,255,0.1);
+  border:1px solid rgba(255,255,255,0.2);
+}

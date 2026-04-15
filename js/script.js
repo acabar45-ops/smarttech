@@ -31,7 +31,19 @@ function doSearch(){
   const s=document.getElementById("sheetFilter").value;
   filteredProducts=ALL_PRODUCTS.filter(p=>(!q||p.partNo.toLowerCase().includes(q)||p.description.toLowerCase().includes(q))&&(!s||p.sheet===s));
   document.getElementById("resultCount").textContent=`${filteredProducts.length}개 품목 (최대 100개 표시)`;
-  document.getElementById("searchResults").innerHTML=filteredProducts.slice(0,100).map(p=>`<tr><td style="color:#aaa;font-size:11px">${p.no}</td><td><span class="partno">${p.partNo}</span><br><span class="sheet-tag">${p.sheet.replace("2026 Price_","")}</span></td><td style="max-width:280px">${p.description}</td><td class="price-cell">${fmt(p.dealer)}</td><td class="price-cell">${fmt(p.oem)}</td><td class="price-cell">${fmt(p.endUser)}</td><td><button class="add-btn" onclick="addProduct('${p.partNo}',this)">담기 +</button></td></tr>`).join("");
+  const gLabel = currentGrade==="dealer" ? "Dealer" : currentGrade==="oem" ? "OEM" : "End User";
+  document.getElementById("searchResults").innerHTML=filteredProducts.slice(0,100).map(p=>{
+    const cur = getP(p);
+    return `<tr>
+      <td class="col-no" style="color:#aaa;font-size:11px">${p.no}</td>
+      <td class="col-part"><span class="partno">${p.partNo}</span><br><span class="sheet-tag">${p.sheet.replace("2026 Price_","")}</span><div class="m-price">${fmt(cur)}원 <span class="m-price-tag">${gLabel}</span></div></td>
+      <td class="col-desc" style="max-width:280px">${p.description}</td>
+      <td class="col-dealer price-cell">${fmt(p.dealer)}</td>
+      <td class="col-oem price-cell">${fmt(p.oem)}</td>
+      <td class="col-enduser price-cell">${fmt(p.endUser)}</td>
+      <td class="col-add"><button class="add-btn" onclick="addProduct('${p.partNo}',this)">담기 +</button></td>
+    </tr>`;
+  }).join("");
 }
 
 function addProduct(partNo,btn){
@@ -78,6 +90,7 @@ function setGrade(g){
   const map={dealer:"gradeDealer",oem:"gradeOEM",enduser:"gradeEndUser"};
   Object.entries(map).forEach(([k,id])=>{const el=document.getElementById(id);if(el)el.classList.toggle("selected",k===g);});
   renderCart();
+  if(typeof doSearch==="function") doSearch();
   if(selectedIndustry){const ind=INDUSTRIES.find(i=>i.id===selectedIndustry);if(ind)renderRec(ind);}
 }
 
@@ -88,7 +101,22 @@ const qDate=()=>{const n=new Date();return`${String(n.getFullYear()).slice(2)}${
 function switchTab(t){
   document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active",el.dataset.tab===t));
   document.querySelectorAll(".panel").forEach(el=>el.classList.toggle("active",el.id==="tab-"+t));
+  const active = document.querySelector(`.tab[data-tab="${t}"]`);
+  const lbl = document.getElementById("ttLabel");
+  if(active && lbl) lbl.textContent = active.textContent.replace(/\s*\d+\s*$/,"").trim();
+  toggleTabMenu(false);
   if(window.MK_ON_TAB)window.MK_ON_TAB(t);
+}
+
+function toggleTabMenu(force){
+  const tabs = document.getElementById("tabsEl");
+  const back = document.getElementById("tabBackdrop");
+  const trig = document.getElementById("tabTrigger");
+  if(!tabs) return;
+  const open = (force===undefined) ? !tabs.classList.contains("open") : !!force;
+  tabs.classList.toggle("open", open);
+  if(back) back.classList.toggle("open", open);
+  if(trig) trig.setAttribute("aria-expanded", String(open));
 }
 
 function goPreview(){
@@ -135,8 +163,13 @@ window.mkToast = function(msg, kind){
 // ---------- 모바일 플로팅 CTA ----------
 window.updateFloatCta = function(){
   const cta = document.getElementById("floatCta");
-  if(!cta) return;
   const count = cart.reduce((s,i)=>s+i.qty,0);
+  const ttCount = document.getElementById("ttCount");
+  if(ttCount){
+    if(count>0){ ttCount.textContent = count+"건"; ttCount.style.display = ""; }
+    else{ ttCount.style.display = "none"; }
+  }
+  if(!cta) return;
   if(count === 0){
     cta.classList.remove("active");
     document.body.classList.remove("has-cta");

@@ -13,13 +13,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Lora:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=7">
+<link rel="stylesheet" href="css/style.css?v=9">
 </head>
 <body>
 <div class="container">
   <div class="brandbar">
     <img src="images/smartech_logo.png" alt="SMARTECH" class="brand-logo">
     <span class="brand-tag">Vacuum Total Solution · Edwards 공식대리점</span>
+    <div class="auth-bar" id="authBar"></div>
   </div>
   <div class="header">
     <div>
@@ -34,7 +35,13 @@
     </div>
   </div>
 
-  <div class="tabs">
+  <button class="tab-trigger" id="tabTrigger" type="button" onclick="toggleTabMenu()" aria-haspopup="true" aria-expanded="false">
+    <span class="tt-label" id="ttLabel">품목 검색</span>
+    <span class="tt-count" id="ttCount" style="display:none">0</span>
+    <span class="tt-caret" aria-hidden="true">▾</span>
+  </button>
+
+  <div class="tabs" id="tabsEl">
     <button class="tab" data-tab="process" onclick="switchTab('process')">공정별 추천</button>
     <button class="tab active" data-tab="search" onclick="switchTab('search')">품목 검색</button>
     <button class="tab" data-tab="quote" onclick="switchTab('quote')">견적서 작성 <span class="cart-count" id="cartCount">0</span></button>
@@ -45,6 +52,7 @@
     <button class="tab" data-tab="settings" onclick="switchTab('settings')">설정</button>
     <button class="tab" data-tab="help" onclick="switchTab('help')">도움말</button>
   </div>
+  <div class="tab-backdrop" id="tabBackdrop" onclick="toggleTabMenu(false)"></div>
 
   <!-- 공정별 추천 -->
   <div id="tab-process" class="panel">
@@ -279,21 +287,17 @@
     </div>
 
     <div class="card">
-      <div class="section-title">명함 판독 에이전트 / Card Parser Agent</div>
-      <p class="adjust-hint">Claude Vision 기반 전문 파서를 사용하면 Tesseract 대비 한·영 혼용 명함 인식 정확도가 크게 향상됩니다. API 키가 설정되지 않으면 Tesseract로 자동 대체됩니다.</p>
+      <div class="section-title">AI 에이전트 · 계정 / Agent Runtime</div>
+      <p class="adjust-hint">Anthropic API 키는 Supabase Edge Function 에만 보관되며 브라우저에는 절대 저장되지 않습니다. 모든 AI 호출은 로그인한 사용자의 JWT 로 인증된 프록시를 통해서만 수행됩니다.</p>
       <div class="settings-block">
-        <label>Anthropic API Key</label>
-        <div class="adjust-row" style="padding-top:4px">
-          <input type="password" id="apiKey" placeholder="sk-ant-..." style="flex:1;padding:10px 12px;border:1px solid var(--mk-rule);border-radius:0;font-family:var(--mono);font-size:12px" autocomplete="off">
-          <button class="btn-mini" onclick="saveApiKey()">저장</button>
-          <button class="btn-mini" onclick="clearApiKey()">삭제</button>
-        </div>
-        <p class="adjust-hint" style="margin-top:8px">키는 브라우저 localStorage 에만 저장되며 서버로 전송되지 않습니다. 모델: <code>claude-haiku-4-5</code> (저지연·저비용).
-          <label style="margin-left:8px"><input type="checkbox" id="useHighModel"> 고정밀 모드 (claude-sonnet-4-6)</label>
+        <label>모델</label>
+        <p class="adjust-hint" style="margin-top:4px">
+          기본 <code>claude-haiku-4-5</code> (저지연·저비용).
+          <label style="margin-left:8px"><input type="checkbox" id="useHighModel" onchange="onModelToggle()"> 고정밀 모드 (claude-sonnet-4-6)</label>
         </p>
       </div>
       <div class="settings-block">
-        <label>엔진 상태</label>
+        <label>런타임 상태</label>
         <div id="engineStatus" class="ocr-status"><span class="muted">초기화 중…</span></div>
       </div>
     </div>
@@ -451,9 +455,10 @@ js/email-agent.js ─ 메일 자동견적 2-에이전트 파이프라인
 </div>
 <div id="mkToast" class="mk-toast" role="status" aria-live="polite"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<script src="js/script.js?v=7"></script>
-<script src="js/extras.js?v=7"></script>
-<script src="js/email-agent.js?v=2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-client.js?v=1"></script>
+<script src="js/script.js?v=9"></script>
+<script src="js/extras.js?v=9"></script>
+<script src="js/email-agent.js?v=3"></script>
 </body>
 </html>
