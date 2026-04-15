@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#024f8c">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="스마텍 견적">
@@ -13,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Lora:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=17">
+<link rel="stylesheet" href="css/style.css?v=22">
 </head>
 <body>
 <div class="container">
@@ -286,9 +287,11 @@
 
   <!-- 메일 자동견적 -->
   <div id="tab-email" class="panel active">
+    <div id="pendingSessions"></div>
+
     <div class="card">
       <div class="section-title">메일 자동견적 / Email-to-Quote Agents</div>
-      <p class="adjust-hint">고객사에서 받은 문의 메일 전체(제목·본문·서명)를 붙여넣으세요. 두 에이전트가 순차적으로 (1) 거래 등급 + 고객정보 추출, (2) 카탈로그에서 적합 제품을 선정하여 견적 초안을 제안합니다. 확인 후 <strong>적용</strong>을 누르면 견적서 작성 탭으로 이동합니다.</p>
+      <p class="adjust-hint">고객 메일을 붙여넣으면 <strong>사전 조회 → Agent 1 (등급/고객) → 1.5 (요구사항) → 사전필터 → 2 (1~3 variants) → 2.5 (자가검증) → 3 (회신)</strong> 순으로 처리합니다. 정보가 부족하면 자동으로 명확화 질문 메일을 생성하고 고객 회신을 기다립니다.</p>
       <textarea id="emailBody" class="email-body" rows="12" placeholder="예)&#10;From: 홍길동 <hong@client.com>&#10;Subject: [문의] 진공오븐용 드라이펌프 견적 요청&#10;&#10;안녕하세요, ㈜바이오엔티 홍길동 부장입니다.&#10;저희가 연구소에서 진공오븐 2대 운영 중이며, nXDS15i 펌프 2대와 예비 오일씰 견적 부탁드립니다.&#10;..."></textarea>
       <div class="btn-row">
         <button class="btn primary" onclick="runEmailAgents()">에이전트 분석 시작</button>
@@ -370,132 +373,158 @@
   <!-- 도움말 -->
   <div id="tab-help" class="panel">
     <div class="card">
-      <h2 class="help-h1">시스템 구성 · 로직 · 계산 안내</h2>
-      <p class="help-lede">본 시스템은 정적 웹앱(서버 없음)으로 구동됩니다. 모든 데이터는 브라우저 <code>localStorage</code> 에만 저장되며, 외부 호출은 Anthropic API(명함 판독·메일 자동견적)와 Tesseract.js CDN(OCR fallback)에 한해 발생합니다. 이 페이지는 각 탭의 동작, 가격 계산 공식, 두 AI 에이전트의 역할과 파이프라인을 설명합니다.</p>
+      <h2 class="help-h1">🙋 사용 설명서 — 쉽게 풀어쓰기</h2>
+      <p class="help-lede">이 프로그램은 <strong>고객이 보낸 이메일을 붙여넣기만 하면 AI가 견적서를 자동으로 만들어 주는 도구</strong>예요. 마치 똑똑한 신입사원이 "이 메일 보고 견적서 대신 써줘!" 하면 바로 만들어주는 것과 같아요. 아래를 천천히 읽으시면 누구나 5분 안에 쓸 수 있습니다.</p>
 
-      <h3 class="help-h2">1 · 아키텍처 한눈에 보기</h3>
+      <h3 class="help-h2">⚡ 1분 만에 끝내는 사용법</h3>
       <div class="help-box">
-        <pre class="help-pre">index.html  ── UI 레이아웃 · 탭 패널
-css/style.css ─ McKinsey 디자인 시스템 (네이비 #051C2C · Lora/Inter/IBM Plex Mono)
-js/script.js  ─ 원본 엔진 (공정 데이터 INDUSTRIES · 전 품목 ALL_PRODUCTS · 검색·장바구니·미리보기)
-js/extras.js  ─ 설정 · 고객관리 · 발행보관함 · 명함 OCR (Claude Vision 우선, Tesseract fallback)
-js/email-agent.js ─ 메일 자동견적 2-에이전트 파이프라인
-(localStorage) mk.clients.v1 · mk.archive.v1 · mk.settings.v1 · mk.anthropic.key · mk.anthropic.model</pre>
+        <ol class="help-ol" style="margin:0">
+          <li><strong>① 메일</strong> 탭 열기 → 고객이 보낸 메일을 전부 복사해서 붙여넣기</li>
+          <li><strong>[에이전트 분석 시작]</strong> 버튼 누르기 (10~20초 기다림)</li>
+          <li>AI가 알아서 <strong>고객 등급·제품 목록·답장 초안</strong>을 만들어 줌</li>
+          <li><strong>[적용 · 견적서 작성으로]</strong> 버튼 → <strong>② 견적</strong> 탭으로 자동 이동</li>
+          <li><strong>③ 미리보기</strong> 탭 → 위쪽에 답장 초안이 있으니 [📋 복사] 눌러서 Gmail에 붙여넣기</li>
+          <li>같은 화면에서 <strong>[인쇄 / PDF 저장]</strong> → 견적서는 PDF로 첨부</li>
+        </ol>
       </div>
+      <p class="help-p"><strong>실제 예시:</strong> 고객이 "안녕하세요, 동결건조기에 쓸 nXDS15i 펌프 2대 견적 부탁드립니다. 납기 언제 가능한가요?" 같은 메일을 보내면 → AI가 <em>"최종사용자 등급이네요"</em> 판단 → <em>nXDS15i 펌프 2대</em>를 장바구니에 담고 → <em>"안녕하세요, ○○님. 문의 주신 nXDS15i 2대 견적서 첨부드립니다. 납기는 재고 보유 시 1~2주..."</em> 같은 답장까지 자동으로 써줍니다.</p>
 
-      <h3 class="help-h2">2 · 탭별 기능</h3>
+      <h3 class="help-h2">📋 2 · 각 메뉴 설명 (예시와 함께)</h3>
 
-      <h4 class="help-h3">2.1 공정별 추천</h4>
-      <p class="help-p">9개 공정 카테고리(코팅, 이차전지, 진공로, 가스실린더, 진공이중배관, 동결건조, OLED, 진공오븐, 연구/분석)를 타일로 선택합니다. 카드 클릭 시 해당 공정의 진공도·펌프 유형·핵심 포인트·추천 모델군이 표시되고, 모델 키워드(예: <code>nXDS</code>, <code>GXS</code>) 를 기반으로 914개 전체 카탈로그에서 부분일치 최대 25건을 추천합니다. <em>담기 +</em> 로 장바구니에 추가되며, 단가 표시는 현재 선택된 등급가를 따릅니다.</p>
+      <h4 class="help-h3">① 메일 자동견적 — 가장 먼저 쓰는 메뉴</h4>
+      <p class="help-p">고객이 "펌프 견적 보내주세요" 라고 보낸 이메일을 붙여넣으면, AI가 <strong>3명의 직원처럼 나눠서</strong> 일해줘요:</p>
+      <ul class="help-ul">
+        <li><strong>첫 번째 AI (등급 판별)</strong> — "이 고객이 딜러인지? 제조사인지? 일반 사용자인지?" 를 메일 내용으로 판단. <em>예) "재판매 하겠다"라고 쓰여 있으면 → 딜러, "저희 연구소에서 쓸 거예요" → 최종사용자</em></li>
+        <li><strong>두 번째 AI (제품 찾기)</strong> — 914개 제품 카탈로그에서 고객 요청에 맞는 걸 골라서 장바구니에 넣어줘요. <em>예) "nXDS15i" 라고 적혀 있으면 정확히 그 제품을 찾고, "동결건조용 펌프"라고만 적혀 있으면 맞는 펌프 5~8개를 추천</em></li>
+        <li><strong>세 번째 AI (답장 쓰기)</strong> — "안녕하세요 ○○님, 문의 주셔서 감사합니다..." 로 시작하는 정중한 답장을 자동으로 써줘요. 고객 질문(납기·오일 포함 여부 등)에 하나씩 답해주고, 확답 어려운 건 "확인 후 안내드리겠습니다" 처리.</li>
+      </ul>
+      <p class="help-p">⏱ 보통 10~20초 걸려요. 결과가 나오면 <strong>[적용 · 견적서 작성으로]</strong> 버튼 누르기.</p>
 
-      <h4 class="help-h3">2.2 품목 검색</h4>
-      <p class="help-p">품명 또는 Part No 부분일치 검색. 시트 필터(IV/SV/VTS)로 세트를 좁힐 수 있습니다. 결과는 최대 100개. 각 행에 <em>Dealer / OEM / End User</em> 3개 단가가 병렬 표시되어 등급 비교가 즉시 가능합니다.</p>
+      <h4 class="help-h3">② 견적서 작성 — 내용 확인·수정</h4>
+      <p class="help-p">AI가 만들어준 내용을 눈으로 한번 더 확인하는 화면이에요. 바꾸고 싶은 게 있으면 여기서 바꾸세요.</p>
+      <ul class="help-ul">
+        <li><strong>고객 등급</strong> — 딜러/OEM/최종사용자 중 선택. 등급에 따라 가격이 달라져요. <em>예) 딜러는 싸게, 최종사용자는 정가대로</em></li>
+        <li><strong>% 입력칸</strong> — 각 등급 옆의 숫자는 "기본 가격의 몇 퍼센트로 팔까?" 예요. 기본 100%. <em>예) 특별히 3% 더 할인하려면 97 입력</em></li>
+        <li><strong>견적 미세 조정</strong> — 이번 견적만 전체적으로 깎고 싶을 때 쓰는 슬라이더. <em>예) 전체 5% 할인이면 95%로 맞춤</em></li>
+        <li><strong>명함 스캔</strong> — 고객 명함 사진 찍어 올리면 회사·이름·전화·이메일이 자동 입력 (메일 받은 경우는 이미 채워져 있음)</li>
+        <li><strong>수량·단가 직접 수정</strong> — 숫자 클릭해서 바로 바꾸기. 합계는 자동 계산</li>
+      </ul>
 
-      <h4 class="help-h3">2.3 견적서 작성</h4>
-      <p class="help-p">견적 작성의 중심 화면. 아래 순서로 구성됩니다.</p>
-      <ol class="help-ol">
-        <li><strong>등급 선택 + 등급 배수 입력</strong> — 딜러/OEM/최종사용자 3등급 중 하나. 각 등급 라벨 우측의 <code>%</code> 입력칸이 <em>현재 등급별 배수</em>이며, 기본 100%. 50~150% 범위에서 0.1% 단위 조정. (설정 탭에서 동일 값을 관리합니다.)</li>
-        <li><strong>견적 미세 조정</strong> — 이번 견적에만 적용되는 전체 가격 조정 슬라이더(50~150%). 장바구니 저장·불러오기 시 함께 보존됩니다.</li>
-        <li><strong>명함 스캔(OCR)</strong> — 이미지 업로드 → Claude Vision 명함 파서 에이전트 실행(키 미설정 시 Tesseract). 회사·담당자·전화·이메일이 폼에 자동 반영.</li>
-        <li><strong>고객 정보 폼</strong> — 회사명/담당자/연락처/이메일/견적번호/납기. 견적번호 기본값은 <code>YYMMDD_SR01</code>.</li>
-        <li><strong>견적 품목 / 합계</strong> — 수량·단가 직접 수정 가능. 합계는 실시간 재계산.</li>
-        <li><strong>고객 저장</strong> — 현재 폼 내용을 CRM(고객 관리 탭)에 저장. 동일 회사+이메일 조합은 덮어쓰기.</li>
-      </ol>
+      <h4 class="help-h3">③ 미리보기 · 출력 — 마지막 확인과 보내기</h4>
+      <p class="help-p">실제 A4 종이에 인쇄될 견적서가 보여요. 위쪽에는 <strong>📩 고객이 보낸 메일</strong>과 <strong>✉ AI가 쓴 답장 초안</strong>이 나란히 떠요.</p>
+      <ul class="help-ul">
+        <li><strong>[📋 회신 복사]</strong> 버튼 → Gmail/아웃룩에서 답장 쓰기 열고 <strong>Ctrl+V</strong> (붙여넣기)</li>
+        <li><strong>[인쇄 / PDF 저장]</strong> 버튼 → 프린터 대화창 → "PDF로 저장" 선택 → 견적서 PDF 파일 완성</li>
+        <li>PDF 파일을 Gmail 답장창에 <strong>첨부</strong>하면 끝! (답장 본문은 ✉ 복사한 내용 그대로 두면 됨)</li>
+        <li><em>💡 팁: 인쇄할 때 원본 메일과 답장 박스는 자동으로 숨겨져요. 견적서만 깔끔히 출력됩니다.</em></li>
+      </ul>
 
-      <h4 class="help-h3">2.4 미리보기 · 출력</h4>
-      <p class="help-p"><em>미리보기 →</em> 를 누르면 견적서가 A4 포맷으로 렌더링되고, 동시에 <strong>발행 내역</strong>에 자동 아카이브됩니다. 브라우저 인쇄 → PDF로 저장으로 파일 추출. <em>텍스트 복사</em> 는 메일 본문용 평문 추출입니다.</p>
+      <h4 class="help-h3">④ 품목 검색 — 메일 없이 직접 찾을 때</h4>
+      <p class="help-p">이메일로 안 왔는데 급하게 견적 만들어야 할 때 씁니다. 제품 이름이나 번호(예: <code>RV3</code>, <code>GXS160</code>) 넣어 검색 → 찾으면 <strong>[담기]</strong> 버튼으로 장바구니 추가.</p>
 
-      <h4 class="help-h3">2.5 고객 관리 (CRM)</h4>
-      <p class="help-p"><code>mk.clients.v1</code> 에 저장된 고객 레코드를 검색·불러오기·삭제. JSON 내보내기/가져오기로 기기 간 이전 가능. 불러오기는 해당 고객의 회사·담당자·연락처·이메일·등급을 자동으로 견적서 작성 폼에 채웁니다.</p>
+      <h4 class="help-h3">⑤ 공정별 추천 — 고객이 "어떤 펌프가 좋을까요?" 물을 때</h4>
+      <p class="help-p">9개 공정 중 선택 (코팅, 이차전지, 진공로, 가스실린더, 이중배관, 동결건조, OLED, 진공오븐, 연구/분석). 각 공정에 어울리는 펌프 모델을 자동으로 보여줘요. <em>예) "동결건조" 선택 → RV·E2M·GXS 시리즈 추천</em></p>
 
-      <h4 class="help-h3">2.6 발행 내역 (Archive)</h4>
-      <p class="help-p">미리보기 단계에서 자동 저장된 견적서 레코드 목록. 견적번호·발행일·수신·등급·공급가액·총액 열람. <em>불러오기</em> 로 과거 견적 전체(장바구니 품목·단가·등급·미세조정·고객정보)를 복원. 동일 견적번호 재발행 시 덮어쓰기. JSON 내보내기 지원.</p>
+      <h4 class="help-h3">⑥ 고객 관리 — 주소록 같은 것</h4>
+      <p class="help-p">한번 거래한 고객 정보를 저장해두고, 다음에 견적 만들 때 이름만 클릭하면 회사·담당자·전화가 자동 입력돼요.</p>
 
-      <h4 class="help-h3">2.7 메일 자동견적 (2-Agent)</h4>
-      <p class="help-p">고객사 문의 메일 전체를 붙여넣고 <em>에이전트 분석 시작</em> 클릭 → 두 에이전트가 순차 실행(상세 로직은 <a href="#help-agents" onclick="document.getElementById('help-agents').scrollIntoView({behavior:'smooth'});return false;">§4</a>). 제안 결과는 카드로 표시되며 <em>적용</em> 시 고객정보/등급/장바구니가 한 번에 설정되고 견적서 작성 탭으로 이동합니다.</p>
+      <h4 class="help-h3">⑦ 발행 내역 — 지난 견적 보관함</h4>
+      <p class="help-p">보낸 견적이 자동으로 저장됩니다. 과거 견적을 다시 열거나, 같은 내용으로 약간 수정해서 재발행할 수 있어요. <em>예) "3개월 전 ○○전자에 보낸 견적이랑 똑같이 다시 보내야 해" → 발행 내역에서 해당 건 [불러오기]</em></p>
 
-      <h4 class="help-h3">2.8 설정</h4>
-      <p class="help-p">등급별 % 배수 일괄 관리(잠금/수정 모드), 초기화, Anthropic API 키 저장(password 필드, localStorage), 모델 선택(기본 <code>claude-haiku-4-5</code> · 고정밀 <code>claude-sonnet-4-6</code>), 엔진 상태 표시.</p>
+      <h4 class="help-h3">⑧ 설정 — 가격 정책 조정</h4>
+      <p class="help-p">등급별 할인율을 항상 바꿔 쓰고 싶을 때 여기서 조정. <strong>[수정하기]</strong> → 값 변경 → <strong>[저장하기]</strong> 순서로 누르세요. <em>예) 딜러에게는 항상 95%로 팔고 싶다면 딜러 칸을 95로 고정</em></p>
 
-      <h3 class="help-h2">3 · 가격 계산 공식</h3>
-      <p class="help-p">모든 단가는 엑셀 원본값(등급별 3개 컬럼)을 기준으로 아래 순서로 계산됩니다. 계산 함수는 <code>js/script.js</code> 의 <code>getP(p)</code>.</p>
+      <h3 class="help-h2">💰 3 · 가격은 어떻게 계산되나요?</h3>
+      <p class="help-p">구구단 같은 순서로 곱셈만 하면 끝이에요. 예시로 따라가 봅시다.</p>
       <div class="help-formula">
-        <div class="ff"><span class="ff-step">STEP 1</span> <span class="ff-def">기준가</span> = <code>p.dealer</code> | <code>p.oem</code> | <code>p.endUser</code> (현재 등급 컬럼)</div>
-        <div class="ff"><span class="ff-step">STEP 2</span> <span class="ff-def">등급 조정가</span> = STEP1 × <code>MK_SETTINGS.multipliers[grade]</code> / 100</div>
-        <div class="ff"><span class="ff-step">STEP 3</span> <span class="ff-def">표시 단가</span> = STEP2 × <code>MK_QUOTE_ADJUST</code> / 100 → <code>Math.round()</code></div>
-        <div class="ff"><span class="ff-step">STEP 4</span> <span class="ff-def">라인 금액</span> = 표시 단가 × 수량 &nbsp;(사용자가 수동으로 <code>customPrice</code> 를 입력한 행은 STEP 2–3 을 건너뛰고 입력값이 그대로 사용됨)</div>
-        <div class="ff"><span class="ff-step">STEP 5</span> <span class="ff-def">공급가액</span> = Σ 라인 금액 &nbsp; · &nbsp; <span class="ff-def">부가세</span> = <code>round(공급가액 × 0.1)</code> &nbsp; · &nbsp; <span class="ff-def">총액</span> = 공급가액 + 부가세</div>
+        <div class="ff"><span class="ff-step">1단계</span> <span class="ff-def">엑셀 원본 가격</span> — 등급에 따라 다름. 예) 어떤 제품의 <strong>딜러가 = 100,000원</strong></div>
+        <div class="ff"><span class="ff-step">2단계</span> <span class="ff-def">등급 할인율</span> 곱하기 — 설정탭에서 딜러를 95%로 해뒀다면: <code>100,000 × 95% = 95,000원</code></div>
+        <div class="ff"><span class="ff-step">3단계</span> <span class="ff-def">이번 견적만 미세 조정</span> 곱하기 — 슬라이더를 98%로 뒀다면: <code>95,000 × 98% = 93,100원</code> ← 이게 한 개 단가</div>
+        <div class="ff"><span class="ff-step">4단계</span> <span class="ff-def">수량</span> 곱하기 — 2대 사면: <code>93,100 × 2 = 186,200원</code></div>
+        <div class="ff"><span class="ff-step">5단계</span> <span class="ff-def">부가세 10%</span> 추가 — <code>186,200 + 18,620 = 204,820원</code> (총 공급가액)</div>
       </div>
-      <p class="help-p"><strong>핵심:</strong> 등급 배수(설정)와 견적 미세조정은 <em>곱연산</em>으로 누적됩니다. 예) Dealer 기준가 100,000원 × 배수 95% × 조정 98% = <code>93,100</code> 원. 배수는 설정 탭에서 저장되어 모든 견적에 지속 적용되고, 조정은 현재 견적에만 적용됩니다.</p>
-
-      <h3 class="help-h2" id="help-agents">4 · AI 에이전트 로직</h3>
-      <p class="help-p">모든 AI 호출은 Anthropic Messages API의 <code>tools</code> + <code>tool_choice</code> 메커니즘으로 <em>구조화된 JSON 도구 호출</em>을 강제합니다. 이는 자유 텍스트 응답보다 파싱 실패율을 크게 낮춥니다.</p>
-
-      <h4 class="help-h3">4.1 명함 판독 에이전트</h4>
-      <p class="help-p">파일: <code>js/extras.js</code> · 함수 <code>parseWithClaude()</code>.</p>
+      <p class="help-p"><strong>기억할 점:</strong></p>
       <ul class="help-ul">
-        <li><strong>입력</strong>: 이미지 파일(Base64) + 판독 규칙 프롬프트.</li>
-        <li><strong>도구</strong>: <code>extract_business_card</code> · 스키마 필드 — <code>company, company_en, contact, title, department, mobile, office, fax, email, address, website, memo, confidence</code>.</li>
-        <li><strong>규칙 요약</strong>: 법인격(㈜, Co., Ltd.) 원문 보존; 전화번호 <code>010-0000-0000</code> 포맷; 국가코드(+82) 0 로 치환; 01X 계열은 mobile, 그 외는 office; 직급과 부서 분리; 명함에 없는 필드는 <code>null</code> (환각 금지); <code>confidence</code> 자체 평가.</li>
-        <li><strong>Fallback</strong>: API 키 미설정 시 Tesseract.js 로 한/영 OCR 후 정규식 파싱(회사는 법인격 키워드, 담당자는 직급 키워드, 전화는 휴대 형식 우선).</li>
-        <li><strong>UI</strong>: 반환된 모든 필드를 표로 표시 + 신뢰도 · 모델 · 토큰 사용량. 핵심 4개(회사·담당자·전화·이메일)만 폼에 자동 반영.</li>
+        <li><strong>설정 탭의 % (등급 배수)</strong> = "앞으로 모든 견적에 이 할인율 쭉 쓸게요" → 저장하면 계속 적용됨</li>
+        <li><strong>견적서 작성 탭의 % (미세 조정)</strong> = "이번 견적만 특별히 더 할인/인상" → 다른 견적에는 영향 없음</li>
+        <li>단가를 직접 숫자로 바꾸면 위 공식 무시하고 그 값으로 계산됩니다</li>
       </ul>
 
-      <h4 class="help-h3">4.2 메일 자동견적 · Agent 1 (등급 분류 + 고객정보)</h4>
-      <p class="help-p">파일: <code>js/email-agent.js</code> · 함수 <code>callTool("classify_grade", ...)</code>.</p>
+      <h3 class="help-h2" id="help-agents">🤖 4 · AI는 어떻게 일하나요?</h3>
+      <p class="help-p">메일 자동견적 버튼을 누르면 AI 3명이 차례로 일해요. 쉽게 비유하면 <strong>신입사원 3명이 역할 나눠서 도와주는 것</strong>과 같아요.</p>
+
+      <h4 class="help-h3">🕵️ AI 1번 — 고객이 어떤 분인지 파악</h4>
+      <p class="help-p">메일을 읽고 "이 고객은 딜러일까? 제조사일까? 일반 사용자일까?" 를 판단해요. 동시에 <strong>회사명·담당자 이름·직급·전화번호·이메일</strong>을 메일에서 뽑아냅니다.</p>
+      <div class="help-box">
+        <strong>판단 예시:</strong>
+        <ul class="help-ul" style="margin:6px 0 0 0">
+          <li>"저희가 재판매하려 합니다" → <strong>딜러</strong></li>
+          <li>"저희 장비에 넣을 부품이 필요합니다" → <strong>OEM (제조사)</strong></li>
+          <li>"저희 연구소에서 쓸 거예요" → <strong>최종사용자</strong></li>
+          <li>애매하면 안전하게 <strong>최종사용자</strong>로 기본 판정 (가장 비싼 가격대)</li>
+        </ul>
+      </div>
+
+      <h4 class="help-h3">🎯 AI 2번 — 알맞은 제품 찾기</h4>
+      <p class="help-p">914개나 되는 제품 중에서 고객 요청에 맞는 걸 찾아줘요. 그냥 다 보여주면 AI가 헷갈리니까, 프로그램이 먼저 <strong>"이 메일엔 이 계열 제품이 맞을 것 같아"</strong> 라고 후보를 40~80개로 줄인 다음 AI에게 넘깁니다.</p>
+      <div class="help-box">
+        <strong>찾는 방법:</strong>
+        <ul class="help-ul" style="margin:6px 0 0 0">
+          <li>메일에 <strong>정확한 모델명</strong>(nXDS15i, GXS450 등) 있으면 → 그걸 최우선 매칭</li>
+          <li>공정만 쓰여 있으면 → 그 공정에 맞는 시리즈를 추천 <em>(예: "동결건조" → RV·E2M 계열)</em></li>
+          <li>수량이 써 있으면 그대로, 없으면 1대</li>
+          <li>카탈로그에 없는 제품은 <strong>절대 만들어내지 않음</strong> (환각 방지)</li>
+        </ul>
+      </div>
+
+      <h4 class="help-h3">✉ AI 3번 — 답장 초안 쓰기</h4>
+      <p class="help-p">AI 1·2가 모은 정보로 고객에게 보낼 답장을 자동으로 써요. 인사 → 감사 → 고객 질문에 답변 → 견적 요약 → 다음 단계 안내 → 스마텍 서명 순서로 500~900자.</p>
+      <div class="help-box">
+        <strong>답장 예시:</strong>
+        <pre class="help-pre" style="font-family:inherit;white-space:pre-wrap">안녕하세요, 홍길동 부장님.
+
+스마텍 제품에 관심 가져주시고 문의 주셔서 감사드립니다.
+동결건조기 증설 준비 중이시군요.
+
+문의 주신 사항에 대해 답변드립니다.
+
+1) 납기: nXDS15i 는 재고 보유 시 1~2주,
+   미보유 시 수입건으로 통상 6~8주 소요됩니다. (정확한 현재 재고는 확인 후 별도 안내)
+
+2) 오일 주입 불필요: 네, 드라이 스크롤 방식이라 오일 없이 바로 사용 가능합니다.
+
+3) 컨트롤러 내장: 기본 내장되어 있어 별도 컨트롤러 없이도 운용 가능합니다.
+
+견적은 첨부된 견적서를 참조해 주십시오.
+nXDS15i 2대 + 예비 팁씰 키트 2세트로 구성하였습니다.
+
+확인 후 궁금한 점 있으시면 언제든 편하게 말씀 주시기 바랍니다.
+감사합니다.
+
+(주)스마텍 | Edwards 공식대리점
+...</pre>
+      </div>
+
+      <h4 class="help-h3">📇 명함 스캔도 AI가 해요</h4>
+      <p class="help-p">고객 명함을 사진 찍어서 올리면 <strong>AI가 사진을 읽어서</strong> 회사·이름·전화·이메일을 자동으로 입력해줘요. 손으로 타이핑 안 해도 됩니다.</p>
+
+      <h3 class="help-h2">❓ 5 · 자주 묻는 질문</h3>
       <ul class="help-ul">
-        <li><strong>역할</strong>: 메일 본문에서 거래 등급(<code>dealer|oem|enduser</code>)을 판정하고, 동시에 회사·담당자·직급·전화·이메일·주소·문의요지를 추출.</li>
-        <li><strong>판정 기준</strong>:
-          <ul>
-            <li><em>딜러</em>: 재판매/총판/대리점/판매처/리셀러(reseller/distributor), 자신을 딜러로 명시, 다수 최종사용자에게 납품 목적</li>
-            <li><em>OEM</em>: 자사 장비에 내장/통합(integration)·BOM·생산라인 투입, 반복·연속 수요 시그널</li>
-            <li><em>최종사용자</em>: 대학·연구소·공장 공정 직접 운영, 소수 자체 사용, 구체 공정 묘사</li>
-            <li>시그널이 약하면 <code>enduser</code> 로 보수적 기본값, <code>confidence</code> 하향</li>
-          </ul>
-        </li>
-        <li><strong>출력</strong>: <code>{ grade, confidence, rationale, signals[], customer{...}, subject_summary }</code>. signals 는 판정 근거가 된 메일 원문 발췌 3~6개.</li>
+        <li><strong>Q. AI가 잘못 판단하면요?</strong><br>A. 모든 결과는 <strong>눈으로 확인 후 수정 가능</strong>해요. 답장 초안도 마음에 안 들면 [재생성] 누르거나 직접 편집하세요. 등급도 잘못 판정했다 싶으면 견적서 작성 탭에서 바로 바꾸면 됩니다.</li>
+        <li><strong>Q. 인터넷 없이도 돼요?</strong><br>A. 기본 기능(제품 검색·견적서 만들기·인쇄)은 인터넷 없어도 돼요. 단 <strong>AI 기능(메일 자동견적·명함 스캔)</strong>은 인터넷 필요합니다.</li>
+        <li><strong>Q. 회사 이름이 안 뜨는데?</strong><br>A. 상단에 비밀번호 <code>8245</code> 넣고 [로그인] 누르셨는지 확인. 로그인해야 고객·견적 내역이 저장되고 AI 기능도 작동합니다.</li>
+        <li><strong>Q. 핸드폰에서도 돼요?</strong><br>A. 네. 핸드폰에서는 하단에 <strong>① 메일 · ② 견적 · ③ 미리보기 · ⋯ 더보기</strong> 버튼이 보여요. 순서대로 누르시면 됩니다.</li>
+        <li><strong>Q. 견적 보낸 거 다시 찾으려면?</strong><br>A. <strong>발행 내역</strong> 탭에서 날짜·회사명으로 검색 → [불러오기] 누르면 그대로 다시 열립니다.</li>
+        <li><strong>Q. PDF 저장하는 법?</strong><br>A. 미리보기 화면에서 [인쇄] 버튼 → 프린터 대화상자에서 프린터 대신 "PDF로 저장" 선택 → 파일 이름 정하고 저장.</li>
       </ul>
 
-      <h4 class="help-h3">4.3 카탈로그 사전 필터 (클라이언트 측)</h4>
-      <p class="help-p">Agent 2 호출 전, 914개 전체를 LLM 에 넘기지 않기 위해 브라우저에서 후보를 최대 80개로 축약합니다. 함수 <code>prefilterCatalog()</code>.</p>
-      <ol class="help-ol">
-        <li>메일 텍스트에서 토큰화 (<code>[a-z][a-z0-9\-]{2,}</code>) → 영문 모델명 후보군 수집.</li>
-        <li>공정 키워드 매핑표(코팅/이차전지/진공로/동결건조 등 9종)로 매칭되면 관련 모델 시리즈(nXDS, GXS, nEXT 등)를 추가 토큰으로 확장.</li>
-        <li>각 제품의 <code>partNo + description</code> 에 토큰이 포함되면 점수화. 앞부분 일치(≤20 자) = +3, 그 외 +1, 정확 Part No 매칭 = +10.</li>
-        <li>점수 &gt; 0 만 필터링 → 내림차순 정렬 → 상위 80개만 Agent 2 에 전달.</li>
-      </ol>
-
-      <h4 class="help-h3">4.4 메일 자동견적 · Agent 2 (제품 선정)</h4>
-      <p class="help-p">함수 <code>callTool("select_products", ...)</code>. 입력에 Agent 1 의 등급 + 메일 원문 + 사전필터 후보(JSON <code>[{p, d, s}]</code>) 를 함께 제공.</p>
+      <h3 class="help-h2">🛟 6 · 문제 해결</h3>
       <ul class="help-ul">
-        <li><strong>규칙</strong>: 카탈로그 외 Part No 생성 금지(환각 방지). 모델명 명시 시 최우선 매칭. 수량 명시가 없으면 1. 공정/용도만 언급되면 펌프·부스터·액세서리 조합 5~8개 추천. 확신 부족 시 <code>notes</code> 에 확인 필요 사항 기재.</li>
-        <li><strong>출력</strong>: <code>{ items: [{ partNo, qty, rationale }], confidence, notes }</code>.</li>
-        <li><strong>검증</strong>: 클라이언트에서 각 <code>partNo</code> 를 <code>ALL_PRODUCTS</code> 와 재매칭. 존재하지 않는 항목은 제외하고 개수를 경고로 표시.</li>
-      </ul>
-
-      <h4 class="help-h3">4.5 적용 단계</h4>
-      <p class="help-p"><em>적용</em> 클릭 시 <code>applyEmailProposal()</code> 실행:</p>
-      <ol class="help-ol">
-        <li>고객정보 4개 필드 폼 반영 + 담당자 = <code>이름 + 직급</code>.</li>
-        <li><code>setGrade()</code> 로 등급 설정 → 등급 배수 자동 적용.</li>
-        <li>장바구니가 비어있으면 그대로 추가, 품목이 있으면 "교체 / 추가" 확인 대화상자.</li>
-        <li>기존 장바구니에 동일 Part No 가 있으면 수량 가산, 없으면 신규 행.</li>
-        <li><code>switchTab("quote")</code> 로 이동 → 사용자 검토 후 <em>미리보기 →</em> 로 진행.</li>
-      </ol>
-
-      <h3 class="help-h2">5 · 데이터 · 보안</h3>
-      <ul class="help-ul">
-        <li><strong>저장 위치</strong>: 모든 업무 데이터는 브라우저 <code>localStorage</code> 에만 저장됩니다. 서버 전송 없음.</li>
-        <li><strong>API 키</strong>: 설정 탭에서 저장한 Anthropic 키는 <code>localStorage.mk.anthropic.key</code> 에 평문 저장. 브라우저 기기를 타인과 공유하지 마십시오.</li>
-        <li><strong>직접 호출 헤더</strong>: <code>anthropic-dangerous-direct-browser-access: true</code> 헤더로 CORS 허용. 프로덕션에서는 백엔드 프록시로 키를 감추는 것이 권장됩니다.</li>
-        <li><strong>백업</strong>: 고객 관리/발행 내역 각 탭의 JSON 내보내기를 주기적으로 다운로드해 보관하십시오. 브라우저 저장소 초기화 시 데이터 손실 가능.</li>
-      </ul>
-
-      <h3 class="help-h2">6 · 모델 · 비용 기준</h3>
-      <ul class="help-ul">
-        <li><strong>기본</strong>: <code>claude-haiku-4-5</code> — 저지연·저비용. 명함·메일 정형 태스크에 적합.</li>
-        <li><strong>고정밀</strong>: <code>claude-sonnet-4-6</code> — 저해상도 명함·모호한 메일에서 정확도 향상. 토큰 단가 높음.</li>
-        <li><strong>토큰 절감 장치</strong>: 사전필터(§4.3), Tool Use 스키마 강제(불필요한 자유 텍스트 금지), 이미지 직접 Base64(외부 호스팅 불필요).</li>
+        <li><strong>AI 분석이 안 돼요</strong> — 상단에서 로그아웃되어 있는지 확인. 비번 <code>8245</code>로 재로그인.</li>
+        <li><strong>429 Rate Limit 에러</strong> — 너무 자주 요청해서 잠시 차단된 상태. 1분 기다렸다 재시도.</li>
+        <li><strong>미리보기에서 답장이 안 보여요</strong> — 메일 탭에서 [적용 · 견적서 작성으로] 버튼을 꼭 눌러야 답장이 미리보기로 전달돼요.</li>
+        <li><strong>화면이 이상해요</strong> — 브라우저에서 <strong>Ctrl+Shift+R</strong>(강제 새로고침) 한번 눌러주세요.</li>
+        <li><strong>버튼이 안 눌려요</strong> — 페이지 한번 껐다 다시 열어주세요.</li>
       </ul>
     </div>
   </div>
@@ -510,8 +539,9 @@ js/email-agent.js ─ 메일 자동견적 2-에이전트 파이프라인
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/supabase-client.js?v=2"></script>
-<script src="js/script.js?v=16"></script>
-<script src="js/extras.js?v=17"></script>
-<script src="js/email-agent.js?v=7"></script>
+<script src="js/script.js?v=21"></script>
+<script src="js/product-types.js?v=1"></script>
+<script src="js/extras.js?v=21"></script>
+<script src="js/email-agent.js?v=21"></script>
 </body>
 </html>

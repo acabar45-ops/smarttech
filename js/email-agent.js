@@ -1,11 +1,23 @@
 /* ============================================================
-   email-agent.js — 메일 자동견적 (3-Agent 파이프라인)
-   Agent 1: 거래 등급 분류 + 고객정보 추출
-   Agent 2: 카탈로그 기반 제품 선정
-   Agent 3: 한국어 비즈니스 회신 초안 작성
+   email-agent.js — 메일 자동견적 파이프라인 (v3: variants + clarification)
+
+   파이프라인:
+     [0] 사전 고객 DB 매칭 (API 0)
+     [1] Agent 1   — 거래 등급 + 고객정보 (신규 고객일 때만)
+     [2] Agent 1.5 — 요구사항 구조화
+     [3] 사전필터  — family + type 그룹핑, 도메인 하드필터
+     [4] Agent 2   — 1~3 variants 제품 선정
+     [5] Agent 2.5 — 자가검증 (pass / needs_fix / insufficient_info)
+         · insufficient_info 또는 confidence 부족 → 명확화 모드로 분기
+            → Agent Q (질문 메일 초안) → 세션 DB 저장 → 고객 회신 대기
+              └ 수동 붙여넣기 또는 Agent R (mock 회신 시뮬레이션)
+              └ [회신 반영 후 재분석] → 병합 텍스트로 파이프라인 재실행
+         · 정상 → Agent 3 (회신 초안) → 견적 카드 렌더
 ============================================================ */
 
 let MK_EMAIL_PROPOSAL = null;
+let MK_ACTIVE_VARIANT = 0;
+let MK_CURRENT_SESSION_ID = null;
 
 const MK_COMPANY = {
   name: "(주)스마텍",
@@ -23,27 +35,41 @@ function clearEmailInput(){
   const t = document.getElementById("emailBody"); if(t) t.value = "";
   const r = document.getElementById("emailResult"); if(r) r.innerHTML = "";
   MK_EMAIL_PROPOSAL = null;
+  MK_ACTIVE_VARIANT = 0;
+  MK_CURRENT_SESSION_ID = null;
+  renderPendingSessions();
 }
 
-// ---------- 카탈로그 사전필터 (family 그룹핑) ----------
+/* ============================================================
+   사전필터 (family + type 그룹핑, 도메인 하드필터)
+============================================================ */
 const MK_FAMILIES = [
-  "NXDS","NXR","NEXT","NES","GXS","EXS","EDS","E2M","RV","EH","STP","ELD","XDS","IPX","TIC","TAV","T-STATION","PFPE","IST","TIM"
+  "NXDS","NXR","NEXT","NES","GXS","EXS","EDS","E2M","RV","EH","STP","ELD","XDS","IPX","TIC","TAV","T-STATION","PFPE","IST","TIM","IXL","IH"
 ];
 function familyOf(product){
   const hay = (product.partNo + " " + product.description).toUpperCase();
-  // 긴 이름 우선 매칭
   const ordered = [...MK_FAMILIES].sort((a,b)=>b.length-a.length);
   for(const f of ordered){ if(hay.includes(f)) return f; }
   return "MISC";
 }
+function _ptype(p){
+  return (typeof productType === "function") ? productType(p) : "misc";
+}
 function compactProducts(list){
-  return list.map(p=>({ p:p.partNo, d:p.description, s:(p.sheet||"").replace("2026 Price_",""), f:familyOf(p) }));
+  return list.map(p=>({
+    p: p.partNo,
+    d: p.description,
+    s: (p.sheet||"").replace("2026 Price_",""),
+    f: familyOf(p),
+    t: _ptype(p),
+  }));
 }
 
 function prefilterCatalog(email, reqs){
   const txt = (email||"").toLowerCase();
-  if(!txt.trim() || typeof ALL_PRODUCTS==="undefined") return [];
-  const modelHints = ["rv","e2m","nes","nxds","nxr","next","gxs","exs","eds","eh","stp","eld","xds","t-station","tic","ipx","ev","pfpe","ist","tim","tav"];
+  if(!txt.trim() || typeof ALL_PRODUCTS === "undefined") return [];
+
+  const modelHints = ["rv","e2m","nes","nxds","nxr","next","gxs","exs","eds","eh","stp","eld","xds","t-station","tic","ipx","ev","pfpe","ist","tim","tav","ixl"];
   const processMap = [
     { kw:["코팅","sputter","스퍼터","액정","렌즈","inline"], add:["nes","exs","gxs","rv","e2m","next"] },
     { kw:["이차전지","battery","degassing","탈취","전해액"], add:["gxs","nes","exs"] },
@@ -60,7 +86,6 @@ function prefilterCatalog(email, reqs){
   processMap.forEach(pm=>{ if(pm.kw.some(k=>txt.includes(k))) pm.add.forEach(x=>tokens.add(x)); });
   modelHints.forEach(m=>{ if(txt.includes(m)) tokens.add(m); });
 
-  // Agent 1.5 요구사항에서 모델 힌트 추가 (최우선)
   const strongModels = new Set();
   if(reqs && Array.isArray(reqs.models_mentioned)){
     reqs.models_mentioned.forEach(m => {
@@ -72,40 +97,65 @@ function prefilterCatalog(email, reqs){
     reqs.accessories_needed.forEach(a => { const aa = String(a||"").toLowerCase(); if(aa.length>=3) tokens.add(aa); });
   }
 
+  const vacLevel = (reqs && reqs.vacuum_level ? String(reqs.vacuum_level) : "").toLowerCase();
+  const constraintsStr = (reqs && Array.isArray(reqs.constraints) ? reqs.constraints.join(" ") : "").toLowerCase();
+  const processesStr = (reqs && Array.isArray(reqs.processes) ? reqs.processes.join(" ") : "").toLowerCase();
+  const wantHV = /고진공|high\s*vac|\bhv\b|e-?[567]|ultra\s*high|uhv/.test(vacLevel) ||
+                 /고진공|ultra\s*high|uhv/.test(constraintsStr);
+  const wantOilFree = /oil[-\s]?free|오일프리|오일\s*없|무오일|dry\s*only/.test(constraintsStr);
+  const wantQuiet = /저소음|quiet|low\s*noise/.test(constraintsStr);
+  const wantCluster = /cluster\s*tool|load\s*lock|transfer\s*module/.test(processesStr);
+
   const scored = ALL_PRODUCTS.map(p=>{
     const hay = (p.partNo + " " + p.description).toLowerCase();
+    const t = _ptype(p);
+    if(wantHV && t === "rotary_oil") return { p, score: 0, _drop: true };
+    if(wantOilFree && (t === "rotary_oil" || t === "fluid")) return { p, score: 0, _drop: true };
+
     let score = 0;
-    tokens.forEach(t=>{
-      if(t.length>=3 && hay.includes(t)){
-        const bonus = strongModels.has(t) ? 6 : (hay.indexOf(t)<20 ? 3 : 1);
+    tokens.forEach(tok=>{
+      if(tok.length>=3 && hay.includes(tok)){
+        const bonus = strongModels.has(tok) ? 6 : (hay.indexOf(tok)<20 ? 3 : 1);
         score += bonus;
       }
     });
-    rawTokens.forEach(t=>{ if(t.length>=4 && p.partNo.toLowerCase()===t) score += 15; });
-    // 요구사항 내 정확 Part No 매칭
+    rawTokens.forEach(tok=>{ if(tok.length>=4 && p.partNo.toLowerCase()===tok) score += 15; });
     if(reqs && Array.isArray(reqs.models_mentioned)){
       reqs.models_mentioned.forEach(m=>{ if(m && p.partNo.toLowerCase()===String(m).toLowerCase()) score += 20; });
     }
+    if(wantHV && (t === "turbo" || t === "dry_pump_scroll" || t === "dry_pump_screw")) score += 4;
+    if(wantQuiet && t === "dry_pump_scroll") score += 2;
+    if(wantCluster && (t === "turbo" || t === "controller" || t === "valve")) score += 3;
+
     return { p, score };
-  }).filter(x=>x.score>0);
+  }).filter(x=>!x._drop && x.score>0);
 
   if(!scored.length) return [];
 
-  // family 별 그룹 + 상위 4개씩 → 최대 40개
+  const maxPerType = 6;
+  const byType = new Map();
+  scored.forEach(x=>{
+    const t = _ptype(x.p);
+    if(!byType.has(t)) byType.set(t, []);
+    byType.get(t).push(x);
+  });
+  const typeFiltered = [];
+  byType.forEach((arr)=>{
+    arr.sort((a,b)=>b.score-a.score);
+    for(let i=0;i<Math.min(arr.length,maxPerType);i++) typeFiltered.push(arr[i]);
+  });
+  typeFiltered.sort((a,b)=>b.score-a.score);
+
   const maxPerFamily = 4;
   const maxTotal = 40;
   const byFam = new Map();
-  scored.forEach(x=>{
+  typeFiltered.forEach(x=>{
     const f = familyOf(x.p);
     if(!byFam.has(f)) byFam.set(f, []);
     byFam.get(f).push(x);
   });
   const families = [...byFam.entries()]
-    .map(([f, arr])=>({
-      f,
-      best: Math.max(...arr.map(x=>x.score)),
-      arr: arr.sort((a,b)=>b.score-a.score).slice(0, maxPerFamily)
-    }))
+    .map(([f, arr])=>({ f, best: Math.max(...arr.map(x=>x.score)), arr: arr.slice(0, maxPerFamily) }))
     .sort((a,b)=>b.best - a.best);
 
   const out = [];
@@ -116,14 +166,16 @@ function prefilterCatalog(email, reqs){
   return out;
 }
 
-// ---------- Agent 1: 등급 분류 + 고객정보 ----------
+/* ============================================================
+   Agent 1 — 거래 등급 분류 + 고객정보
+============================================================ */
 const CLASSIFY_SCHEMA = {
   type:"object",
   properties:{
     grade: { type:"string", enum:["dealer","oem","enduser"] },
     confidence: { type:"number", minimum:0, maximum:1 },
-    rationale: { type:"string", description:"2-3문장 근거" },
-    signals:  { type:"array", items:{ type:"string" }, description:"판별에 사용된 메일 속 문구·키워드" },
+    rationale: { type:"string" },
+    signals:  { type:"array", items:{ type:"string" } },
     customer: {
       type:"object",
       properties:{
@@ -135,125 +187,177 @@ const CLASSIFY_SCHEMA = {
         address: { type:["string","null"] },
       }
     },
-    subject_summary: { type:["string","null"], description:"문의 요지 요약 1문장" }
+    subject_summary: { type:["string","null"] }
   },
   required:["grade","confidence","rationale","customer"]
 };
-
 const CLASSIFY_PROMPT = `당신은 B2B 진공장비 대리점의 거래등급 분류 + 고객정보 추출 전문가입니다.
 메일 본문에서 아래 규칙으로 등급을 판정하고 고객정보를 추출해 classify_grade 도구로 반환하십시오.
 
 등급 규칙:
-- dealer(딜러): 재판매/공급/총판/대리점/판매처/리셀러(reseller/distributor) 언급, 자신이 딜러로 명시, 다수 최종사용자에게 납품 목적
-- oem(OEM): 자사 장비에 내장/통합(integration)·제조·BOM·생산라인 투입 목적, 반복·연속 수요 시그널
-- enduser(최종사용자): 대학·연구소·공장 공정 직접 운영, 1~2대 자체 사용 목적, 구체 공정 묘사
+- dealer: 재판매/공급/총판/대리점/판매처/리셀러 언급, 다수 최종사용자에게 납품 목적.
+- oem: 자사 장비 내장/integration/BOM/양산라인 투입, 반복 수요.
+- enduser: 대학·연구소·공장 직접 운영, 1~2대 자체 사용.
 
-추가 지침:
-- 한국 전화번호는 010-0000-0000 / 02-000-0000 / 031-000-0000 형식으로 정규화.
-- 국가코드(+82)는 0으로 변환.
-- 명확한 시그널이 약하면 enduser 로 기본 분류하고 confidence 를 낮추십시오.
-- signals 에는 등급 판단 근거가 된 메일 원문 발췌 3-6개를 넣으십시오.
-- 출력은 classify_grade 도구 호출 1회로만.`;
+- 한국 전화번호 010-0000-0000 / 02-000-0000 / 031-000-0000 포맷.
+- 국가코드 +82 는 0 으로 변환.
+- 시그널 약하면 enduser 기본, confidence 하향.
+- 출력 classify_grade 1회.`;
 
-// ---------- Agent 1.5: 요구사항 추출 ----------
+/* ============================================================
+   Agent 1.5 — 요구사항 구조화 추출
+============================================================ */
 const REQS_SCHEMA = {
   type:"object",
   properties:{
-    models_mentioned: { type:"array", items:{ type:"string" }, description:"메일에 명시된 구체 모델명 (예: nXDS15i, GXS450, EH500) — 오탈자 정상화" },
-    processes: { type:"array", items:{ type:"string" }, description:"공정·용도 키워드 (예: 스퍼터링, 동결건조, OLED 증착)" },
-    vacuum_level: { type:["string","null"], description:"명시된 진공도 (예: 5e-6 mbar, 고진공, 중진공)" },
-    applications: { type:"array", items:{ type:"string" }, description:"장비·환경 (예: cluster tool, load lock chamber, 연구실)" },
+    models_mentioned: { type:"array", items:{ type:"string" } },
+    processes: { type:"array", items:{ type:"string" } },
+    vacuum_level: { type:["string","null"] },
+    applications: { type:"array", items:{ type:"string" } },
     quantities: {
       type:"array",
       items:{
         type:"object",
-        properties:{
-          model_or_category: { type:"string" },
-          qty: { type:"integer", minimum:1 }
-        },
+        properties:{ model_or_category:{ type:"string" }, qty:{ type:"integer", minimum:1 } },
         required:["model_or_category","qty"]
-      },
-      description:"수량이 명시된 항목들"
+      }
     },
-    accessories_needed: { type:"array", items:{ type:"string" }, description:"언급된 부속품·액세서리 (예: 컨트롤러 TIC, 케이블, 아이솔레이션 밸브)" },
-    constraints: { type:"array", items:{ type:"string" }, description:"제약 조건 (예: 오일프리, 저진동, 저소음, ATEX, 특정 크기)" },
+    accessories_needed: { type:"array", items:{ type:"string" } },
+    constraints: { type:"array", items:{ type:"string" } },
     confidence: { type:"number", minimum:0, maximum:1 }
   },
   required:["models_mentioned","processes","applications","quantities","accessories_needed","confidence"]
 };
+const REQS_PROMPT = `메일에서 진공장비 요구사항을 구조화 추출. extract_requirements 1회 반환.
 
-const REQS_PROMPT = `당신은 고객 이메일에서 진공장비 요구사항을 구조화 추출하는 전문가입니다. extract_requirements 도구로 단 1회 반환하십시오.
-
-규칙:
-1. models_mentioned: 메일에 **명시된 구체 모델명만** (예: nXDS15i, GXS450, EH500, STP-iXA2206). 추측 금지. 흔한 오탈자는 정상화 (예: nXDS 15 → nXDS15).
-2. processes: 언급된 공정·용도 (스퍼터링, OLED 증착, 동결건조, 이차전지 degassing, SEM/TEM, cluster tool 등).
-3. vacuum_level: 명시된 진공도 수치 또는 표현. 없으면 null.
-4. applications: 장비·환경 설명 (cluster tool, load lock, 연구실, 양산라인 등).
-5. quantities: 수량 명시된 것만. "유닛당 2EA" 같은 BOM 표현은 기본 유닛 1대 기준으로 환산.
+1. models_mentioned: 메일에 명시된 구체 모델명만. 추측 금지.
+2. processes: 공정·용도.
+3. vacuum_level: 명시된 진공도. 없으면 null.
+4. applications: 장비·환경.
+5. quantities: 수량 명시 항목만.
 6. accessories_needed: 부속 (컨트롤러, 케이블, 밸브, 리크디텍터 등).
-7. constraints: 특수 조건 (오일프리, 저소음, ATEX, 특정 크기 등).
+7. constraints: 특수 조건 (오일프리, 저소음 등).
 8. confidence: 추출 자신도.
-9. 없는 필드는 빈 배열(또는 null)로. 절대 추측·환각 금지.`;
+9. 없는 필드 빈 배열/null. 환각 금지.`;
 
-// ---------- Agent 2: 제품 선정 ----------
+/* ============================================================
+   Agent 2 — 1~3 variants 제품 선정
+============================================================ */
 const SELECT_SCHEMA = {
   type:"object",
   properties:{
-    items: {
+    variants: {
+      type:"array",
+      minItems: 1,
+      maxItems: 3,
+      items:{
+        type:"object",
+        properties:{
+          label: { type:"string" },
+          positioning: { type:"string" },
+          description: { type:"string" },
+          pros: { type:"array", items:{ type:"string" } },
+          cons: { type:"array", items:{ type:"string" } },
+          best_for: { type:"string" },
+          items: {
+            type:"array",
+            items:{
+              type:"object",
+              properties:{
+                partNo: { type:"string" },
+                qty: { type:"integer", minimum:1 },
+                rationale: { type:"string" }
+              },
+              required:["partNo","qty","rationale"]
+            }
+          },
+          confidence: { type:"number", minimum:0, maximum:1 }
+        },
+        required:["label","positioning","description","pros","cons","best_for","items","confidence"]
+      }
+    },
+    overall_confidence: { type:"number", minimum:0, maximum:1 },
+    common_notes: { type:["string","null"] }
+  },
+  required:["variants","overall_confidence"]
+};
+const SELECT_PROMPT_HEADER = `스마텍 제품 선정 전문가. 1~3 variants 제안을 select_products 도구로 반환.
+
+규칙:
+1. partNo 는 제공된 후보 JSON 내 값만 사용. 존재하지 않는 Part No 생성 금지.
+2. 단일 해석 명확 → variants 1개. 해석 여지/트레이드오프 있으면 2~3.
+3. 각 variant 는 서로 다른 positioning (표준/고사양/경제형 등). 단순 수량 차이는 variant 아님.
+4. pros/cons/best_for 반드시 작성. 관점 중복 금지.
+5. 후보 JSON 의 't' 타입 필드 참고 → 완결 시스템 (펌프+부스터+터보+컨트롤러+밸브 등 필요한 것).
+6. 명시 모델 최우선. 수량 명시 반영, 없으면 1.
+7. 정보 부족 시 confidence 낮추고 common_notes 에 기재.
+8. 출력 select_products 1회.`;
+
+/* ============================================================
+   Agent 2.5 — 자가검증
+============================================================ */
+const VERIFY_SCHEMA = {
+  type:"object",
+  properties:{
+    per_variant: {
       type:"array",
       items:{
         type:"object",
         properties:{
-          partNo:  { type:"string" },
-          qty:     { type:"integer", minimum:1 },
-          rationale: { type:"string", description:"선정 근거 1-2문장" }
+          variant_label: { type:"string" },
+          verdict: { type:"string", enum:["pass","needs_fix","insufficient_info"] },
+          issues: { type:"array", items:{ type:"string" } },
+          missing_accessories: { type:"array", items:{ type:"string" } },
+          adjusted_confidence: { type:"number", minimum:0, maximum:1 },
+          explanation: { type:"string" }
         },
-        required:["partNo","qty","rationale"]
+        required:["variant_label","verdict","adjusted_confidence","explanation"]
       }
     },
-    confidence: { type:"number", minimum:0, maximum:1 },
-    notes:      { type:["string","null"], description:"추가 확인 필요 사항, 누락 정보 등" }
+    global_verdict: { type:"string", enum:["ok","needs_clarification"] },
+    clarification_reasons: { type:"array", items:{ type:"string" } }
   },
-  required:["items","confidence"]
+  required:["per_variant","global_verdict"]
 };
+const VERIFY_PROMPT = `스마텍 선임 엔지니어로 제안된 견적안을 감수. verify_proposal 1회 반환.
 
-const SELECT_PROMPT_HEADER = `당신은 스마텍(에드워즈 공식대리점)의 제품 선정 전문가입니다.
-아래에 제공된 메일 본문과 고객 등급을 바탕으로, 후보 카탈로그에서 요청에 가장 부합하는 제품을 선정하여 select_products 도구로 반환하십시오.
+각 variant 검증:
+- 요구사항(진공도·공정·수량·특수조건) 충족?
+- 필수 부속 누락? (컨트롤러·케이블·배관 밸브)
+- 물리·공학적 타당? (고진공에 로터리만, 오일프리에 오일펌프 등 모순)
+- 과잉·중복?
 
-규칙:
-1. partNo 는 반드시 제공된 후보 카탈로그 목록에 있는 값만 사용하십시오. 존재하지 않는 Part No 를 만들어내지 마십시오.
-2. 메일에 명시된 모델명(예: nXDS15i, GXS450, EH250 등)은 최우선 매칭.
-3. 수량이 명시된 경우 그대로 반영, 없으면 1.
-4. 공정·용도만 언급된 경우 적합한 펌프·부스터·액세서리 조합을 최대 5~8개로 추천하되, 각 rationale 에 근거를 명시.
-5. 확신이 낮거나 정보 부족 시 notes 에 "확인 필요" 사항을 기재하고 confidence 를 낮추십시오.
-6. 출력은 select_products 도구 호출 1회로만.`;
+Verdict: pass / needs_fix (수정 가능, issues 명시) / insufficient_info (정보 부족)
+insufficient_info 1개 이상이면 global_verdict=needs_clarification, clarification_reasons 기재.
+adjusted_confidence 0~1 재조정.`;
 
-// ---------- Agent 3: 회신 초안 ----------
-const REPLY_SCHEMA = {
+/* ============================================================
+   Agent Q — 명확화 질문 메일
+============================================================ */
+const ASK_SCHEMA = {
   type:"object",
   properties:{
-    subject: { type:"string", description:"RE: 접두어를 포함한 회신 제목" },
-    body_text: { type:"string", description:"완성된 회신 본문. 인사→감사→질문답변→견적 요약→다음 단계→서명 순서. 줄바꿈 포함. 원문 메일과 동일 언어(한/영) 사용." },
-    answered_questions: { type:"array", items:{ type:"string" }, description:"본문에서 답변한 고객 질문 (없으면 빈 배열)" },
-    open_questions: { type:"array", items:{ type:"string" }, description:"답하기 위해 추가 확인이 필요한 항목 — 영업담당이 체크해야 함" },
+    subject: { type:"string" },
+    body_text: { type:"string" },
+    asked_fields: { type:"array", items:{ type:"string" } },
     confidence: { type:"number", minimum:0, maximum:1 }
   },
-  required:["subject","body_text","answered_questions","open_questions","confidence"]
+  required:["subject","body_text","asked_fields"]
 };
+const ASK_PROMPT = `스마텍 영업 담당자. 고객에게 정중한 추가 문의 메일을 작성. ask_clarification 1회 반환.
 
-const REPLY_PROMPT = `당신은 스마텍((주)스마텍, 에드워즈 공식대리점)의 영업 담당자로서 고객 이메일에 대한 정중한 회신 초안을 작성합니다. draft_reply 도구로만 반환하십시오.
+구성:
+1) 인사 "안녕하세요, ○○○님." (고객명 확인되면)
+2) 감사 + 정확한 견적 위해 확인 필요한다는 뉘앙스
+3) 3~5개 구체 질문 (reasons 기반):
+   - 공정/용도 상세
+   - 진공도 목표 (mbar/Torr)
+   - 가동 조건 (주당 시간, 연속 여부)
+   - 수량·납기
+   - 특수 요건 (오일프리/저소음 등)
+4) "회신 주시면 최적 구성 2안 내 제안드리겠습니다" 1문장
+5) 서명 블록 (그대로):
 
-작성 구조 (body_text 순서):
-1) 인사 — "안녕하세요, ○○○님." (고객 이름/직급 확인되면 사용, 없으면 "안녕하세요.")
-2) 요청 수령 감사 — 1문장
-3) 고객 질문 답변 — 메일에 질문(?, ~까요, ~인가요, ~문의드립니다, ~궁금합니다 등)이 있으면 각각 답변.
-   · 확실하지 않은 사항(납기·재고·특수사양·할인율)은 "확인 후 별도 안내드리겠습니다"로 처리하고 open_questions 에 기록.
-   · 제품 사양/일반 지식은 답변 가능.
-4) 견적 요약 — 선정 품목 품명(한글 위주) + 수량을 1~3줄로. 금액은 직접 노출하지 말고 "첨부/별도 견적서 참조" 식으로.
-5) 다음 단계 — "확인 후 회신 부탁드립니다" / "추가 문의 환영" 류 1문장.
-6) 서명 — 아래 고정 서명 블록을 그대로 붙여넣으시오.
-
-고정 서명 블록 (그대로 포함, 수정 금지):
 (주)스마텍 | Edwards 공식대리점
 대표 이명재
 T. 031-204-7170  M. 010-3194-7170  F. 031-206-7178
@@ -261,24 +365,76 @@ E. rokmclmj@gmail.com  W. smartechvacuum.com
 경기 수원시 영통구 신원로 55, 907호
 
 규칙:
-- 존댓말, 간결한 한국 B2B 톤. 총 250~500자.
-- 원문 메일이 영문이면 회신도 영문으로 작성, 서명 블록도 영문 등가로 변환.
-- 과장된 영업문구 금지. 거래 등급/할인율 직접 언급 금지.
-- subject 는 원문 제목이 유추되면 "RE: <요약>" 형태, 아니면 "RE: 견적 문의 회신 - ○○○님" 형태.`;
+- 존댓말, B2B 톤, 300~500자.
+- 영문 원문이면 영문.
+- subject: "RE: <요약> - 추가 문의" 또는 "견적 진행을 위한 추가 문의드립니다".
+- asked_fields 에 질문 키워드 3~5개.`;
 
-async function callTool(toolName, schema, systemPrompt, userText, extraUserBlocks=[]){
+/* ============================================================
+   Agent R — mock 가상 고객 회신 (시뮬레이션)
+============================================================ */
+const MOCK_REPLY_SCHEMA = {
+  type:"object",
+  properties:{
+    body_text: { type:"string" },
+    persona_note: { type:"string" },
+    confidence: { type:"number", minimum:0, maximum:1 }
+  },
+  required:["body_text","persona_note"]
+};
+const MOCK_REPLY_PROMPT = `테스트용 '가상 고객' 역할. 원본 문의 + 스마텍 추가 질문을 읽고 고객 입장에서 자연스러운 회신 작성. simulate_customer_reply 1회 반환.
+
+- 각 질문에 합리적으로 답변. 현실적 수준.
+- 3~6문장, 가벼운 인사 포함.
+- 원문 언어와 동일 언어.
+- persona_note: "이 회신은 LLM 시뮬레이션 가상 데이터입니다."`;
+
+/* ============================================================
+   Agent 3 — 회신 초안
+============================================================ */
+const REPLY_SCHEMA = {
+  type:"object",
+  properties:{
+    subject: { type:"string" },
+    body_text: { type:"string" },
+    answered_questions: { type:"array", items:{ type:"string" } },
+    open_questions: { type:"array", items:{ type:"string" } },
+    confidence: { type:"number", minimum:0, maximum:1 }
+  },
+  required:["subject","body_text","answered_questions","open_questions","confidence"]
+};
+const REPLY_PROMPT = `스마텍 영업 담당자. 고객 이메일에 정중한 회신 초안 작성. draft_reply 1회 반환.
+
+1) 인사 "안녕하세요, ○○○님."
+2) 수령 감사 1문장
+3) 고객 질문 답변 (불확실=확인 후 별도 안내, open_questions 기록)
+4) 견적 요약 품명(한글) + 수량 1~3줄. 금액은 "별도 견적서 참조".
+5) "추가 문의 환영" 1문장
+6) 서명 블록:
+
+(주)스마텍 | Edwards 공식대리점
+대표 이명재
+T. 031-204-7170  M. 010-3194-7170  F. 031-206-7178
+E. rokmclmj@gmail.com  W. smartechvacuum.com
+경기 수원시 영통구 신원로 55, 907호
+
+존댓말 250~500자. 영문이면 영문 + 영문 서명. 할인율/등급 직접 언급 금지. subject: "RE: <요약>" 또는 "견적 회신 - ○○○님".`;
+
+/* ============================================================
+   Claude 프록시 호출 (temperature 0 기본)
+============================================================ */
+async function callTool(toolName, schema, systemPrompt, userText, opts={}){
   if(!window.MK_USER) throw new Error("로그인이 필요합니다.");
   const j = await mkCallClaude({
     model: getModel(),
-    max_tokens: 2048,
-    temperature: 0,
+    max_tokens: opts.max_tokens || 2048,
+    temperature: opts.temperature != null ? opts.temperature : 0,
     tools: [{ name: toolName, description: toolName, input_schema: schema }],
     tool_choice: { type:"tool", name: toolName },
     messages: [{
       role:"user",
       content: [
         { type:"text", text: systemPrompt },
-        ...extraUserBlocks,
         { type:"text", text: userText }
       ]
     }]
@@ -288,19 +444,18 @@ async function callTool(toolName, schema, systemPrompt, userText, extraUserBlock
   return { data: blk.input, usage: j.usage, model: j.model };
 }
 
-// 메일 원문에서 이메일/회사명 후보 추출 (Agent 호출 전 사전 스캔용)
+/* ============================================================
+   사전 스캔 · 기존 고객 매칭
+============================================================ */
 function preScanEmailText(text){
   const emails = (String(text||"").match(/[\w.+\-]+@[\w\-]+\.[\w.\-]+/g) || []).map(e=>e.toLowerCase());
   const lines = String(text||"").split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   const companies = [];
-  const companyRx = /(\(주\)|㈜|주식회사|Co\.?\s?,?\s?Ltd\.?|\bInc\.?|Corporation|Corp\.?|GmbH|S\.?A\.?|Limited)/i;
-  lines.forEach(l => {
-    if(companyRx.test(l) && l.length < 80) companies.push(l);
-  });
+  const companyRx = /(\(주\)|㈜|주식회사|Co\.?\s?,?\s?Ltd\.?|\bInc\.?|Corporation|Corp\.?|GmbH|Limited)/i;
+  lines.forEach(l => { if(companyRx.test(l) && l.length < 80) companies.push(l); });
   return { emails: [...new Set(emails)], companies };
 }
 
-// 매칭: (customer 객체) 또는 ({emails[], companies[]}) 모두 수용
 function matchExistingClient(input){
   const list = (typeof MK_CLIENTS !== "undefined") ? MK_CLIENTS : (window.MK_CLIENTS || []);
   if(!list || !list.length) return null;
@@ -316,13 +471,11 @@ function matchExistingClient(input){
     if(input.company) companyList.push(input.company);
   }
 
-  // 1차: 이메일 정확 매칭
   for(const e of emailList){
     if(!e) continue;
     const hit = list.find(c => (c.email||"").trim().toLowerCase() === e);
     if(hit) return hit;
   }
-  // 2차: 도메인 + 회사 유사
   for(const e of emailList){
     if(!e || !e.includes("@")) continue;
     const domain = e.split("@")[1];
@@ -335,7 +488,6 @@ function matchExistingClient(input){
     const hit = list.find(c => (c.email||"").toLowerCase().endsWith("@"+domain));
     if(hit) return hit;
   }
-  // 3차: 회사명 정규화 일치
   for(const co of companyList){
     const coNorm = norm(co);
     if(coNorm.length < 3) continue;
@@ -352,54 +504,119 @@ function matchExistingClient(input){
   return null;
 }
 
-async function runEmailAgents(){
-  const email = (document.getElementById("emailBody").value||"").trim();
+/* ============================================================
+   명확화 트리거 판별
+============================================================ */
+function needsClarification(reqs, products, verify){
+  const reasons = [];
+  if(reqs){
+    if((reqs.confidence ?? 1) < 0.5) reasons.push("요구사항 추출 신뢰도 낮음 (Agent 1.5).");
+    const empty = (!reqs.models_mentioned?.length) && (!reqs.processes?.length) && (!reqs.applications?.length);
+    if(empty) reasons.push("구체 모델·공정·용도가 전혀 파악되지 않음.");
+  }
+  if(products){
+    if((products.overall_confidence ?? 1) < 0.5) reasons.push("제품 선정 신뢰도 낮음 (Agent 2).");
+  }
+  if(verify){
+    if(verify.global_verdict === "needs_clarification") reasons.push("자가검증: 정보 부족.");
+    (verify.clarification_reasons||[]).forEach(r => reasons.push(r));
+    (verify.per_variant||[]).forEach(v => { if(v.verdict === "insufficient_info") reasons.push(`"${v.variant_label}" — ${v.explanation}`); });
+  }
+  const unique = [...new Set(reasons)];
+  return { needed: unique.length > 0, reasons: unique };
+}
+
+/* ============================================================
+   세션 DB 헬퍼
+============================================================ */
+async function createSession({ originalEmail, clarification, matchedClientId }){
+  if(!window.MK_USER) return null;
+  const { data, error } = await window.MK_SB.from("smartech_email_sessions").insert({
+    user_id: window.MK_USER.id,
+    status: "pending_reply",
+    original_email: originalEmail,
+    clarification: clarification || null,
+    matched_client_id: matchedClientId || null,
+  }).select().single();
+  if(error){ console.warn("session create", error); return null; }
+  return data;
+}
+async function updateSession(id, patch){
+  if(!window.MK_USER || !id) return null;
+  const { data, error } = await window.MK_SB.from("smartech_email_sessions").update(patch).eq("id", id).select().single();
+  if(error){ console.warn("session update", error); return null; }
+  return data;
+}
+async function loadPendingSessions(){
+  if(!window.MK_USER) return [];
+  const { data, error } = await window.MK_SB.from("smartech_email_sessions")
+    .select("*").eq("status","pending_reply").order("updated_at", { ascending:false }).limit(20);
+  if(error){ console.warn("sessions load", error); return []; }
+  return data || [];
+}
+async function loadSession(id){
+  if(!window.MK_USER || !id) return null;
+  const { data, error } = await window.MK_SB.from("smartech_email_sessions").select("*").eq("id", id).maybeSingle();
+  if(error){ console.warn("session load", error); return null; }
+  return data;
+}
+
+/* ============================================================
+   메인 파이프라인
+============================================================ */
+async function runEmailAgents(opts={}){
+  const emailOverride = opts.emailOverride;
+  const existingSessionId = opts.sessionId || null;
+  const skipAgent1Hint = opts.skipAgent1 === true;
+
+  const email = (emailOverride || document.getElementById("emailBody").value || "").trim();
   const out = document.getElementById("emailResult");
   if(!email){ out.innerHTML = `<div class="email-err">메일 본문을 붙여넣으세요.</div>`; return; }
-  if(!window.MK_USER){ out.innerHTML = `<div class="email-err">로그인이 필요합니다. 상단 로그인 바에서 매직링크로 로그인하세요.</div>`; return; }
+  if(!window.MK_USER){ out.innerHTML = `<div class="email-err">로그인이 필요합니다.</div>`; return; }
 
-  // [1단계] 사전 스캔 — 원문에서 이메일/회사명 추출 → 고객 DB 조회 (Agent 호출 0)
+  MK_CURRENT_SESSION_ID = existingSessionId;
+
   out.innerHTML = `<div class="email-step"><strong>사전 조회</strong> · 기존 고객 DB 확인 중…</div>`;
   const preHints = preScanEmailText(email);
   const preMatched = matchExistingClient(preHints);
 
-  let g1 = null;
-  let gradeData;
-
-  if(preMatched){
-    // 기존 고객 — Agent 1 생략, DB 저장값 사용
-    out.innerHTML += `<div class="email-step"><strong>기존 고객 발견</strong> · ${escapeHtml(preMatched.company||"")} — 저장된 등급 <b>${preMatched.grade||"dealer"}</b> 적용 · Agent 1 생략</div>`;
+  let g1 = null, gradeData;
+  if(preMatched || skipAgent1Hint){
+    const mc = preMatched;
+    if(mc){
+      out.innerHTML += `<div class="email-step"><strong>기존 고객 발견</strong> · ${escapeHtml(mc.company||"")} — 저장된 등급 <b>${mc.grade||"dealer"}</b> 적용 · Agent 1 생략</div>`;
+    }
     gradeData = {
-      grade: preMatched.grade || "dealer",
-      confidence: 1.0,
-      rationale: `기존 고객 DB 매칭 (회사: ${preMatched.company||""} / 이메일: ${preMatched.email||""}). 저장된 등급을 그대로 사용하며 분류 Agent 는 실행하지 않았습니다.`,
-      signals: [
-        preMatched.email ? ("email: "+preMatched.email) : null,
-        preMatched.company ? ("company: "+preMatched.company) : null
-      ].filter(Boolean),
-      customer: {
-        company: preMatched.company || null,
-        contact: preMatched.contact || null,
-        title:   preMatched.title || null,
-        phone:   preMatched.mobile || preMatched.office || preMatched.phone || null,
-        email:   preMatched.email || (preHints.emails[0] || null),
-        address: preMatched.address || null,
+      grade: (mc?.grade) || "dealer",
+      confidence: mc ? 1.0 : 0.6,
+      rationale: mc
+        ? `기존 고객 DB 매칭 (회사: ${mc.company||""} / 이메일: ${mc.email||""}). 저장된 등급 사용, 분류 Agent 생략.`
+        : "재분석 단계 — 기존 분류 유지.",
+      signals: mc ? [
+        mc.email ? ("email: "+mc.email) : null,
+        mc.company ? ("company: "+mc.company) : null
+      ].filter(Boolean) : [],
+      customer: mc ? {
+        company: mc.company || null, contact: mc.contact || null, title:   mc.title || null,
+        phone:   mc.mobile || mc.office || mc.phone || null,
+        email:   mc.email || (preHints.emails[0] || null), address: mc.address || null,
+      } : {
+        company: null, contact: null, title: null,
+        phone: null, email: preHints.emails[0] || null, address: null,
       },
       subject_summary: null,
-      _existing_client: preMatched,
+      _existing_client: mc || null,
     };
   } else {
-    // 신규 고객 — Agent 1 실행
-    out.innerHTML += `<div class="email-step"><strong>신규 고객</strong> · Agent 1 로 거래 등급 분류 및 고객정보 추출 중…</div>`;
+    out.innerHTML += `<div class="email-step"><strong>신규 고객</strong> · Agent 1 실행 중…</div>`;
     try{
       g1 = await callTool("classify_grade", CLASSIFY_SCHEMA, CLASSIFY_PROMPT,
-        "---- 메일 본문 시작 ----\n" + email + "\n---- 메일 본문 끝 ----");
+        "---- 메일 본문 ----\n" + email);
     }catch(e){
       out.innerHTML = `<div class="email-err">Agent 1 실패: ${escapeHtml(e.message||String(e))}</div>`;
       return;
     }
     gradeData = g1.data;
-    // Agent 1 결과로 재확인 (사전 스캔에서 놓친 매칭이 있는지)
     const postMatch = matchExistingClient(gradeData.customer);
     if(postMatch){
       gradeData._agent_grade = gradeData.grade;
@@ -407,264 +624,538 @@ async function runEmailAgents(){
       gradeData.grade = postMatch.grade || gradeData.grade;
       gradeData.confidence = 1.0;
       gradeData._existing_client = postMatch;
-      gradeData.rationale = `[Agent 1 실행 후 기존 고객 발견] ${postMatch.company||""} — 저장된 등급(${postMatch.grade}) 적용. Agent 1 판정: ${gradeData._agent_grade} (${Math.round((gradeData._agent_confidence||0)*100)}%) · ` + (gradeData.rationale||"");
-      out.innerHTML += `<div class="email-step"><strong>사후 매칭</strong> · Agent 1 이 추출한 정보로 DB 재조회 → ${escapeHtml(postMatch.company||"")} 매칭. 등급 ${postMatch.grade} 적용</div>`;
+      gradeData.rationale = `[Agent 1 후 기존 고객 발견] ${postMatch.company||""} — 저장된 등급(${postMatch.grade}) 적용. 원 Agent: ${gradeData._agent_grade} (${Math.round((gradeData._agent_confidence||0)*100)}%) · ` + (gradeData.rationale||"");
+      out.innerHTML += `<div class="email-step"><strong>사후 매칭</strong> · ${escapeHtml(postMatch.company||"")} 발견, 등급 ${postMatch.grade} 적용</div>`;
     }
   }
 
-  // Agent 1.5 요구사항 추출
-  out.innerHTML += `<div class="email-step"><strong>Agent 1.5</strong> · 요구사항 구조화 추출 중…</div>`;
+  out.innerHTML += `<div class="email-step"><strong>Agent 1.5</strong> · 요구사항 구조화 중…</div>`;
   let reqsData = null;
   try{
     const gr = await callTool("extract_requirements", REQS_SCHEMA, REQS_PROMPT,
-      "---- 메일 본문 시작 ----\n" + email + "\n---- 메일 본문 끝 ----");
+      "---- 메일 본문 ----\n" + email);
     reqsData = gr.data;
-  }catch(e){
-    console.warn("Agent 1.5 실패 (무시하고 진행):", e);
+  }catch(e){ console.warn("Agent 1.5 실패(진행):", e); }
+
+  const earlyCheck = needsClarification(reqsData, null, null);
+  if(earlyCheck.needed && !opts.forceProceed){
+    out.innerHTML += `<div class="email-step"><strong>명확화 판단</strong> · 정보 부족, Agent 2 생략</div>`;
+    return enterClarificationMode(email, gradeData, reqsData, earlyCheck.reasons, existingSessionId);
   }
 
-  // 요구사항 기반 사전 필터 (family 그룹핑 + 최대 40)
   const candidates = prefilterCatalog(email, reqsData);
   const compact = compactProducts(candidates);
-
-  out.innerHTML += `<div class="email-step"><strong>Agent 2</strong> · family 그룹핑 후보 ${compact.length}개 중 제품 선정 중…</div>`;
+  out.innerHTML += `<div class="email-step"><strong>사전필터</strong> · ${compact.length}개 (family+type 그룹핑, 도메인 하드필터)</div>`;
 
   if(!compact.length){
-    renderEmailProposal(gradeData, { items:[], confidence:0, notes:"메일에서 제품 관련 단서가 발견되지 않았습니다. 수동 검색을 권장합니다." }, g1, null, null, reqsData);
-    return;
+    return enterClarificationMode(email, gradeData, reqsData, ["메일에서 제품 단서가 발견되지 않음."], existingSessionId);
   }
 
+  out.innerHTML += `<div class="email-step"><strong>Agent 2</strong> · 1~3 variants 제품 선정 중…</div>`;
   let g2;
   try{
-    const catalogJson = JSON.stringify(compact);
-    const reqsJson = reqsData ? JSON.stringify(reqsData) : "(요구사항 추출 실패 — 메일 원문만 참고)";
     const userText =
       "[고객 등급] " + gradeData.grade + "\n\n" +
-      "[Agent 1.5 요구사항 JSON]\n" + reqsJson + "\n\n" +
+      "[Agent 1.5 요구사항]\n" + JSON.stringify(reqsData||{}) + "\n\n" +
       "[메일 본문]\n" + email + "\n\n" +
-      "[후보 카탈로그 JSON: p=Part No, d=품명, s=시트, f=모델 family]\n" + catalogJson + "\n\n" +
-      "지침:\n" +
-      "- 요구사항의 models_mentioned 와 정확 일치하는 Part No 가 후보에 있으면 최우선 채택.\n" +
-      "- 같은 family 내 비슷한 변종이 여러 개면 가장 요구사항에 근접한 1~2개만 선택.\n" +
-      "- accessories_needed 가 있으면 해당 부속도 후보에서 찾아 추가.";
-    g2 = await callTool("select_products", SELECT_SCHEMA, SELECT_PROMPT_HEADER, userText);
+      "[후보 카탈로그 JSON: p,d,s,f,t]\n" + JSON.stringify(compact) + "\n\n" +
+      "해석 여지 없으면 1안, 있으면 2~3안.";
+    g2 = await callTool("select_products", SELECT_SCHEMA, SELECT_PROMPT_HEADER, userText, { max_tokens: 3072 });
   }catch(e){
     out.innerHTML += `<div class="email-err">Agent 2 실패: ${escapeHtml(e.message||String(e))}</div>`;
     return;
   }
+  const productsData = g2.data;
 
-  // Agent 3: 회신 초안
+  out.innerHTML += `<div class="email-step"><strong>Agent 2.5</strong> · 자가검증 중…</div>`;
+  let verifyData = null;
+  try{
+    const verifyInput =
+      "[요구사항]\n" + JSON.stringify(reqsData||{}) + "\n\n" +
+      "[제안 variants]\n" + JSON.stringify(productsData.variants||[]) + "\n\n" +
+      "[후보 타입 분포]\n" + JSON.stringify(summarizeByType(candidates));
+    const gv = await callTool("verify_proposal", VERIFY_SCHEMA, VERIFY_PROMPT, verifyInput);
+    verifyData = gv.data;
+  }catch(e){ console.warn("Agent 2.5 실패(진행):", e); }
+
+  const verifyCheck = needsClarification(reqsData, productsData, verifyData);
+  if(verifyCheck.needed && !opts.forceProceed){
+    out.innerHTML += `<div class="email-step"><strong>자가검증</strong> · 정보 부족, 명확화 모드 전환</div>`;
+    return enterClarificationMode(email, gradeData, reqsData, verifyCheck.reasons, existingSessionId);
+  }
+
   out.innerHTML += `<div class="email-step"><strong>Agent 3</strong> · 회신 초안 작성 중…</div>`;
   let g3 = null;
   try{
-    g3 = await runReplyAgent(email, gradeData, g2.data);
-  }catch(e){
-    // Agent 3 실패는 치명적이지 않음 — 견적 결과는 그대로 렌더
-    console.warn("Agent 3 실패 (무시하고 진행):", e);
-  }
+    const firstV = (productsData.variants && productsData.variants[0]) || { items: [] };
+    g3 = await runReplyAgent(email, gradeData, firstV);
+  }catch(e){ console.warn("Agent 3 실패(진행):", e); }
 
   try{
-    renderEmailProposal(gradeData, g2.data, g1, g2, g3);
+    renderEmailProposal(gradeData, productsData, verifyData, g1, g2, g3, reqsData);
   }catch(e){
-    console.error("renderEmailProposal error", e, { gradeData, g2data: g2?.data });
-    out.innerHTML += `<div class="email-err">렌더링 오류: ${escapeHtml(e.message||String(e))}<br><small>콘솔(F12)에서 상세 로그를 확인하세요.</small></div>
-      <pre class="ocr-raw" style="margin-top:8px">${escapeHtml(JSON.stringify({ agent1: gradeData, agent2: g2?.data, agent3: g3?.data }, null, 2))}</pre>
-      <div class="btn-row"><button class="btn" onclick="clearEmailInput()">다시 시도</button></div>`;
+    console.error("renderEmailProposal error", e);
+    out.innerHTML += `<div class="email-err">렌더링 오류: ${escapeHtml(e.message||String(e))}</div>
+      <pre class="ocr-raw" style="margin-top:8px">${escapeHtml(JSON.stringify({ agent1: gradeData, agent2: productsData, verify: verifyData }, null, 2))}</pre>`;
+  }
+
+  if(existingSessionId){
+    updateSession(existingSessionId, {
+      status: "completed",
+      last_proposal: {
+        grade: gradeData.grade,
+        variants_count: (productsData.variants||[]).length,
+        overall_confidence: productsData.overall_confidence,
+      }
+    });
+    renderPendingSessions();
   }
 }
 
-async function runReplyAgent(emailBody, gradeData, productsData){
-  const validItems = (productsData.items||[])
-    .map(it=>{ const prod = ALL_PRODUCTS.find(p=>p.partNo===it.partNo); return prod ? { partNo: it.partNo, description: prod.description, qty: it.qty } : null; })
-    .filter(Boolean);
-  const payload = {
-    original_email: emailBody,
-    grade: gradeData.grade,
-    customer: gradeData.customer || {},
-    subject_summary: gradeData.subject_summary || null,
-    items: validItems,
-    company: MK_COMPANY
-  };
-  const userText =
-    "---- 원본 메일 시작 ----\n" + emailBody + "\n---- 원본 메일 끝 ----\n\n" +
-    "---- 회신 컨텍스트 (JSON) ----\n" + JSON.stringify(payload, null, 2);
-  return await callTool("draft_reply", REPLY_SCHEMA, REPLY_PROMPT, userText);
+/* ============================================================
+   명확화 모드 진입
+============================================================ */
+async function enterClarificationMode(email, gradeData, reqsData, reasons, existingSessionId){
+  const out = document.getElementById("emailResult");
+  out.innerHTML += `<div class="email-step"><strong>Agent Q</strong> · 고객에게 보낼 추가 문의 메일 작성 중…</div>`;
+
+  let askData = null;
+  try{
+    const input =
+      "[추출된 요구사항]\n" + JSON.stringify(reqsData||{}) + "\n\n" +
+      "[명확화 이유]\n" + (reasons||[]).map(r=>"- "+r).join("\n") + "\n\n" +
+      "[원문 메일]\n" + email + "\n\n" +
+      "[고객 이름]\n" + (gradeData.customer?.contact || "");
+    const ga = await callTool("ask_clarification", ASK_SCHEMA, ASK_PROMPT, input);
+    askData = ga.data;
+  }catch(e){
+    out.innerHTML += `<div class="email-err">Agent Q 실패: ${escapeHtml(e.message||String(e))}</div>`;
+    return;
+  }
+
+  let sessionId = existingSessionId;
+  const mcId = gradeData._existing_client?.id || null;
+  if(!sessionId){
+    const sess = await createSession({ originalEmail: email, clarification: askData, matchedClientId: mcId });
+    sessionId = sess?.id || null;
+  } else {
+    await updateSession(sessionId, { clarification: askData, status: "pending_reply" });
+  }
+  MK_CURRENT_SESSION_ID = sessionId;
+
+  renderClarificationCard(gradeData, reqsData, askData, reasons, sessionId);
+  renderPendingSessions();
 }
 
-function renderEmailProposal(grade, products, meta1, meta2, meta3){
+/* ============================================================
+   Agent 3 회신 초안
+============================================================ */
+async function runReplyAgent(emailBody, gradeData, variant){
+  const items = (variant?.items || []).map(it=>{
+    const prod = ALL_PRODUCTS.find(p=>p.partNo===it.partNo);
+    return prod ? { partNo: it.partNo, description: prod.description, qty: it.qty } : null;
+  }).filter(Boolean);
+  const payload =
+    "[원문 메일]\n" + emailBody + "\n\n" +
+    "[고객]\n" + JSON.stringify(gradeData.customer||{}) + "\n\n" +
+    "[선정 품목 - " + (variant?.label||"") + "]\n" + items.map(i=>`- ${i.partNo} | ${i.description} × ${i.qty}`).join("\n");
+  return await callTool("draft_reply", REPLY_SCHEMA, REPLY_PROMPT, payload);
+}
+
+/* ============================================================
+   시뮬레이션 · mailto · 재분석
+============================================================ */
+async function simulateCustomerReply(){
+  if(!MK_CURRENT_SESSION_ID){ alert("세션이 없습니다."); return; }
+  const sess = await loadSession(MK_CURRENT_SESSION_ID);
+  if(!sess){ alert("세션 로드 실패"); return; }
+  const ta = document.getElementById("customerReplyBody");
+  const note = document.getElementById("mockPersonaNote");
+  if(ta) ta.value = "생성 중…";
+  if(note) note.textContent = "";
+  try{
+    const input =
+      "[원본 문의 메일]\n" + sess.original_email + "\n\n" +
+      "[스마텍 추가 질문]\n제목: " + (sess.clarification?.subject||"") + "\n본문:\n" + (sess.clarification?.body_text||"");
+    const gr = await callTool("simulate_customer_reply", MOCK_REPLY_SCHEMA, MOCK_REPLY_PROMPT, input, { temperature: 0.3 });
+    if(ta) ta.value = gr.data.body_text || "";
+    if(note) note.textContent = "※ " + (gr.data.persona_note || "");
+  }catch(e){
+    if(ta) ta.value = "";
+    alert("시뮬레이션 실패: " + (e.message||String(e)));
+  }
+}
+
+function openMailCompose({ to, subject, body }){
+  const href = "mailto:" + encodeURIComponent(to||"") +
+    "?subject=" + encodeURIComponent(subject||"") +
+    "&body=" + encodeURIComponent(body||"");
+  window.location.href = href;
+}
+
+async function reanalyzeWithReply(){
+  const sessionId = MK_CURRENT_SESSION_ID;
+  if(!sessionId){ alert("세션이 없습니다."); return; }
+  const reply = (document.getElementById("customerReplyBody")?.value || "").trim();
+  if(!reply){ alert("고객 회신을 붙여넣어주세요."); return; }
+
+  const sess = await loadSession(sessionId);
+  if(!sess){ alert("세션 로드 실패"); return; }
+
+  const merged =
+    "[원본 문의 메일]\n" + sess.original_email + "\n\n" +
+    "[스마텍 추가 질문]\n" + (sess.clarification?.body_text||"") + "\n\n" +
+    "[고객 회신]\n" + reply;
+
+  await updateSession(sessionId, { customer_reply: reply, merged_email: merged });
+  await runEmailAgents({ emailOverride: merged, sessionId, skipAgent1: !!sess.matched_client_id });
+}
+
+function forceProceedBypass(){
+  const email = (document.getElementById("emailBody").value || "").trim();
+  if(!email){ alert("메일 본문이 비어있습니다."); return; }
+  runEmailAgents({ forceProceed: true });
+}
+
+async function cancelClarification(){
+  if(MK_CURRENT_SESSION_ID){
+    await updateSession(MK_CURRENT_SESSION_ID, { status: "abandoned" });
+  }
+  clearEmailInput();
+  renderPendingSessions();
+}
+
+async function continueSession(sessionId){
+  const sess = await loadSession(sessionId);
+  if(!sess){ alert("세션을 찾을 수 없습니다."); return; }
+  MK_CURRENT_SESSION_ID = sessionId;
+  const ta = document.getElementById("emailBody");
+  if(ta) ta.value = sess.original_email || "";
+  const gradeData = {
+    grade: "dealer", confidence: 0.6, rationale: "(세션 복원)", signals: [],
+    customer: { company:null, contact:null, title:null, phone:null, email:null, address:null },
+    _existing_client: sess.matched_client_id ? { id: sess.matched_client_id } : null
+  };
+  renderClarificationCard(gradeData, null, sess.clarification || {}, ["세션 이어가기 — 고객 회신을 붙여넣으세요."], sessionId);
+  if(sess.customer_reply){
+    const rta = document.getElementById("customerReplyBody");
+    if(rta) rta.value = sess.customer_reply;
+  }
+}
+
+/* ============================================================
+   대기 세션 리스트 렌더
+============================================================ */
+async function renderPendingSessions(){
+  const wrap = document.getElementById("pendingSessions");
+  if(!wrap) return;
+  const list = await loadPendingSessions();
+  if(!list.length){ wrap.innerHTML = ""; return; }
+  wrap.innerHTML = `
+    <div class="card" style="border-left:3px solid #C7921F;background:#FFFAEF;padding:18px 22px">
+      <div class="section-title" style="margin-top:0">회신 대기 중인 명확화 세션 <span class="pill" style="margin-left:8px">${list.length}</span></div>
+      <table class="agent-review" style="width:100%">
+        <thead><tr><th>업데이트</th><th>질문 제목</th><th>요청 항목</th><th style="width:160px"></th></tr></thead>
+        <tbody>
+        ${list.map(s=>{
+          const dt = (s.updated_at||s.created_at||"").slice(0,16).replace("T"," ");
+          const subj = s.clarification?.subject || "(제목 없음)";
+          const fields = (s.clarification?.asked_fields||[]).join(", ");
+          return `<tr>
+            <td>${escapeHtml(dt)}</td>
+            <td>${escapeHtml(subj)}</td>
+            <td>${escapeHtml(fields)}</td>
+            <td style="text-align:right">
+              <button class="add-btn" onclick="continueSession('${s.id}')">이어가기</button>
+              <button class="del-btn" onclick="abandonSession('${s.id}')">폐기</button>
+            </td>
+          </tr>`;
+        }).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function abandonSession(id){
+  if(!confirm("이 세션을 폐기하시겠습니까?")) return;
+  await updateSession(id, { status: "abandoned" });
+  renderPendingSessions();
+}
+
+/* ============================================================
+   명확화 카드 렌더
+============================================================ */
+function renderClarificationCard(grade, reqs, ask, reasons, sessionId){
   const out = document.getElementById("emailResult");
+  const to = grade?.customer?.email || "";
+  const subj = ask?.subject || "";
+  const body = ask?.body_text || "";
+  const asked = ask?.asked_fields || [];
+  out.innerHTML = `
+    <div class="clarify-card">
+      <div class="clarify-head">
+        <span class="pill" style="background:#C7921F">추가 확인 필요</span>
+        <span class="muted" style="font-size:11px">session: ${sessionId ? sessionId.slice(0,8) : "(미생성)"}</span>
+      </div>
+      <div class="email-rationale">
+        <strong>명확화가 필요한 이유</strong>
+        <ul style="margin-top:6px;margin-left:18px;font-size:12px;line-height:1.8">${(reasons||[]).map(r=>`<li>${escapeHtml(r)}</li>`).join("")}</ul>
+      </div>
+
+      <div class="section-title" style="margin-top:22px">Agent Q 가 작성한 추가 문의 메일</div>
+      <div class="clarify-meta">
+        <label>수신</label><input type="text" id="clarTo" value="${escapeHtml(to)}" placeholder="고객 이메일">
+        <label>제목</label><input type="text" id="clarSubject" value="${escapeHtml(subj)}">
+      </div>
+      <textarea id="clarBody" class="email-body" rows="12">${escapeHtml(body)}</textarea>
+      ${asked.length ? `<div class="muted" style="font-size:11px;margin-top:6px">질문 항목: ${asked.map(a=>`<span class="pill-soft">${escapeHtml(a)}</span>`).join(" ")}</div>` : ""}
+      <div class="btn-row">
+        <button class="btn" onclick="copyClarification()">복사</button>
+        <button class="btn" onclick="openClarMailto()">메일 앱에서 열기</button>
+        <button class="btn" onclick="forceProceedBypass()">그래도 견적 진행</button>
+        <button class="btn" onclick="cancelClarification()">취소</button>
+      </div>
+
+      <div class="section-title" style="margin-top:28px">고객 회신</div>
+      <div class="email-notes" style="margin-bottom:10px">
+        <strong>⚠ 시뮬레이션 모드.</strong> 실제 메일 연결 전까지는 아래 수동 붙여넣기 또는 가상 회신 생성으로 테스트할 수 있습니다. 메일 연결 후에는 IMAP/Gmail 자동 수집으로 치환됩니다.
+        <div id="mockPersonaNote" class="muted" style="margin-top:6px;font-size:11px"></div>
+      </div>
+      <textarea id="customerReplyBody" class="email-body" rows="8" placeholder="고객 회신 본문을 붙여넣으세요. 또는 아래 '가상 회신 생성' 버튼을 눌러 시뮬레이션하세요."></textarea>
+      <div class="btn-row">
+        <button class="btn" onclick="simulateCustomerReply()">🧪 시뮬레이션: 가상 고객 회신 생성</button>
+        <button class="btn primary" onclick="reanalyzeWithReply()">회신 반영 후 재분석</button>
+      </div>
+    </div>`;
+}
+
+function copyClarification(){
+  const subj = document.getElementById("clarSubject")?.value || "";
+  const body = document.getElementById("clarBody")?.value || "";
+  const to = document.getElementById("clarTo")?.value || "";
+  const text = `To: ${to}\nSubject: ${subj}\n\n${body}`;
+  navigator.clipboard.writeText(text).then(()=>alert("클립보드에 복사되었습니다."));
+}
+function openClarMailto(){
+  openMailCompose({
+    to: document.getElementById("clarTo")?.value || "",
+    subject: document.getElementById("clarSubject")?.value || "",
+    body: document.getElementById("clarBody")?.value || "",
+  });
+}
+
+/* ============================================================
+   견적 제안 카드 렌더 (variants 탭)
+============================================================ */
+function renderEmailProposal(grade, products, verify, meta1, meta2, meta3, reqsData){
+  const variants = (products?.variants || []).slice(0,3);
+  MK_ACTIVE_VARIANT = 0;
   const gradeLbl = ({dealer:"딜러 (Dealer)", oem:"OEM", enduser:"최종사용자 (End User)"})[grade.grade] || grade.grade;
   const conf1 = Math.round((grade.confidence||0)*100);
-  const conf2 = Math.round((products.confidence||0)*100);
-  const signals = (grade.signals||[]).map(s=>`<li>${escapeHtml(s)}</li>`).join("");
-  const c = grade.customer||{};
-  const customerRows = [
-    ["회사", c.company],
-    ["담당자", c.contact],
-    ["직급", c.title],
-    ["전화", c.phone],
-    ["이메일", c.email],
-    ["주소", c.address],
-  ].filter(r=>r[1]);
-  // 유효한 Part No만 남기기
-  const validItems = (products.items||[])
-    .map(it=>{ const prod = ALL_PRODUCTS.find(p=>p.partNo===it.partNo); return prod ? {...it, prod} : null; })
-    .filter(Boolean);
-  const invalidCount = (products.items||[]).length - validItems.length;
-
-  const itemRows = validItems.length ? validItems.map(it=>`
-      <tr>
-        <td><span class="partno">${escapeHtml(it.partNo)}</span><br><span class="sheet-tag">${(it.prod.sheet||"").replace("2026 Price_","")}</span></td>
-        <td>${escapeHtml(it.prod.description)}</td>
-        <td style="text-align:center">${it.qty}</td>
-        <td class="price-cell">${fmt(priceForGrade(it.prod, grade.grade))}원</td>
-        <td>${escapeHtml(it.rationale||"")}</td>
-      </tr>`).join("") : `<tr><td colspan="5" class="no-match">선정된 제품이 없습니다. 메일 내용을 구체화하거나 수동 검색을 이용하세요.</td></tr>`;
+  const overall = Math.round((products?.overall_confidence||0)*100);
 
   const replyData = meta3?.data || null;
+  const c = grade.customer || {};
+  const customerRows = [
+    ["회사", c.company], ["담당자", c.contact], ["직급", c.title],
+    ["전화", c.phone], ["이메일", c.email], ["주소", c.address],
+  ].filter(r=>r[1]);
+
   MK_EMAIL_PROPOSAL = {
     grade: grade.grade,
     customer: c,
-    items: validItems,
+    variants: variants.map(v => ({
+      ...v,
+      items: (v.items||[]).map(it=>{
+        const prod = ALL_PRODUCTS.find(p=>p.partNo===it.partNo);
+        return prod ? { ...it, prod } : null;
+      }).filter(Boolean)
+    })),
+    verify: verify || null,
     reply_draft: replyData,
     existingClient: grade._existing_client || null,
     _emailBody: (document.getElementById("emailBody")?.value||"").trim(),
     _gradeRaw: grade,
-    _productsRaw: products
+    _productsRaw: products,
+    _reqs: reqsData || null,
   };
+
+  const out = document.getElementById("emailResult");
+  const varTabs = variants.map((v,i)=>{
+    const conf = Math.round((v.confidence||0)*100);
+    const vVerify = (verify?.per_variant||[]).find(x=>x.variant_label===v.label);
+    const badge = vVerify ? verdictBadge(vVerify.verdict) : "";
+    return `<button class="variant-tab ${i===0?"active":""}" data-idx="${i}" onclick="setActiveVariant(${i})">
+      <div class="vt-label">${escapeHtml(v.label)}</div>
+      <div class="vt-meta"><span class="pill">${conf}%</span> ${badge}</div>
+    </button>`;
+  }).join("");
 
   out.innerHTML = `
     <div class="email-card">
       <div class="email-head">
         <div>
-          <div class="section-title" style="border:none;padding:0;margin:0 0 6px">Agent 1 · 거래 등급 판별</div>
+          <div class="section-title" style="border:none;padding:0;margin:0 0 6px">Agent 1 · 거래 등급</div>
           <div class="email-grade-val">${escapeHtml(gradeLbl)} <span class="pill">${grade._existing_client ? "기존 고객 적용" : "신뢰도 "+conf1+"%"}</span>${grade._existing_client ? ` <span class="muted" style="font-size:11px">· ${escapeHtml(grade._existing_client.company||"")}</span>` : ""}</div>
         </div>
-        <div class="muted" style="font-size:11px;text-align:right">model: ${escapeHtml(meta1?.model||"")}</div>
+        <div class="muted" style="font-size:11px;text-align:right">overall ${overall}% · variants ${variants.length}개</div>
       </div>
       <div class="email-rationale"><strong>근거.</strong> ${escapeHtml(grade.rationale||"")}</div>
-      ${signals ? `<details class="email-details"><summary>판별 시그널 (${grade.signals.length})</summary><ul>${signals}</ul></details>` : ""}
-      ${grade.subject_summary ? `<div class="email-sum"><strong>문의 요지.</strong> ${escapeHtml(grade.subject_summary)}</div>` : ""}
 
       ${customerRows.length ? `
-      <div class="section-title" style="margin-top:24px">추출된 고객 정보</div>
+      <div class="section-title" style="margin-top:22px">추출된 고객 정보</div>
       <table class="agent-review"><tbody>
         ${customerRows.map(([k,v])=>`<tr><th>${k}</th><td>${escapeHtml(v)}</td></tr>`).join("")}
       </tbody></table>
       ` : ""}
 
-      <div class="section-title" style="margin-top:24px">Agent 2 · 선정 제품 <span class="pill" style="margin-left:8px">신뢰도 ${conf2}%</span></div>
-      <div class="scroll-wrap" style="max-height:320px">
-        <table>
-          <thead><tr>
-            <th>Part No</th><th>품명</th><th style="width:60px;text-align:center">수량</th>
-            <th style="width:120px;text-align:right">단가(${gradeLbl})</th><th>근거</th>
-          </tr></thead>
-          <tbody>${itemRows}</tbody>
-        </table>
-      </div>
-      ${invalidCount ? `<div class="email-err" style="margin-top:8px">※ ${invalidCount}개 Part No 는 카탈로그에 존재하지 않아 제외했습니다.</div>` : ""}
-      ${products.notes ? `<div class="email-notes"><strong>Notes.</strong> ${escapeHtml(products.notes)}</div>` : ""}
+      ${reqsData ? `
+      <details class="email-details" style="margin-top:16px">
+        <summary>Agent 1.5 추출 요구사항</summary>
+        <pre class="ocr-raw">${escapeHtml(JSON.stringify(reqsData, null, 2))}</pre>
+      </details>
+      ` : ""}
 
-      ${renderReplyDraft(replyData)}
+      <div class="section-title" style="margin-top:28px">Agent 2 · 견적안 비교</div>
+      <div class="variant-tabs">${varTabs}</div>
+      <div id="variantPanel">${renderVariantPanel(variants[0], grade.grade, verify)}</div>
 
-      <div class="btn-row">
-        <button class="btn primary" onclick="applyEmailProposal()">적용 · 견적서 작성으로</button>
+      ${products.common_notes ? `<div class="email-notes" style="margin-top:14px"><strong>공통 참고.</strong> ${escapeHtml(products.common_notes)}</div>` : ""}
+
+      <div id="replyDraftBlock">${replyData ? renderReplyDraft(replyData, variants[0]) : ""}</div>
+
+      <div class="btn-row" style="margin-top:20px">
+        <button class="btn primary" onclick="applyEmailProposal()">이 안으로 적용 · 견적서 작성</button>
+        <button class="btn" onclick="regenerateReplyForVariant()">현재 안 기준 회신 재생성</button>
         <button class="btn" onclick="clearEmailInput()">취소</button>
       </div>
     </div>`;
 }
 
-function renderReplyDraft(reply){
-  if(!reply){
-    return `<details class="email-reply-draft" open>
-      <summary>✉ 회신 초안 <span class="reply-conf">생성 실패 — [재생성] 버튼을 눌러 다시 시도</span></summary>
-      <div class="reply-body">
-        <div class="email-err" style="margin:0">Agent 3 호출이 실패했습니다. 네트워크·모델 상태 확인 후 재시도하세요.</div>
-        <div class="reply-actions"><button class="btn" onclick="regenerateReplyDraft()">재생성</button></div>
+function setActiveVariant(i){
+  MK_ACTIVE_VARIANT = i;
+  const variants = MK_EMAIL_PROPOSAL?.variants || [];
+  const v = variants[i]; if(!v) return;
+  document.querySelectorAll(".variant-tab").forEach(el=>el.classList.toggle("active", Number(el.dataset.idx)===i));
+  const panel = document.getElementById("variantPanel");
+  if(panel) panel.innerHTML = renderVariantPanel(v, MK_EMAIL_PROPOSAL.grade, MK_EMAIL_PROPOSAL.verify);
+}
+
+function renderVariantPanel(v, grade, verify){
+  if(!v) return `<div class="no-match">variant 없음</div>`;
+  const vVerify = (verify?.per_variant||[]).find(x=>x.variant_label===v.label);
+  const gradeLbl = ({dealer:"Dealer", oem:"OEM", enduser:"End User"})[grade] || grade;
+  const itemRows = (v.items||[]).map(it=>{
+    const prod = it.prod || ALL_PRODUCTS.find(p=>p.partNo===it.partNo);
+    if(!prod) return `<tr><td colspan="5" class="no-match">Part No ${escapeHtml(it.partNo)} — 카탈로그 없음</td></tr>`;
+    const t = _ptype(prod);
+    return `<tr>
+      <td><span class="partno">${escapeHtml(prod.partNo)}</span><br>
+          <span class="sheet-tag">${(prod.sheet||"").replace("2026 Price_","")}</span>
+          <span class="sheet-tag">${escapeHtml(typeLabel(t))}</span></td>
+      <td>${escapeHtml(prod.description)}</td>
+      <td style="text-align:center">${it.qty}</td>
+      <td class="price-cell">${fmt(priceForGrade(prod, grade))}원</td>
+      <td>${escapeHtml(it.rationale||"")}</td>
+    </tr>`;
+  }).join("");
+
+  const issues = (vVerify?.issues||[]).concat((vVerify?.missing_accessories||[]).map(x=>"누락 의심: "+x));
+
+  return `
+    <div class="variant-panel">
+      <div class="vp-positioning">${escapeHtml(v.positioning||"")}</div>
+      <p class="vp-desc">${escapeHtml(v.description||"")}</p>
+
+      <div class="vp-procons">
+        <div class="vp-pros">
+          <div class="vp-h">장점</div>
+          <ul>${(v.pros||[]).map(x=>`<li>${escapeHtml(x)}</li>`).join("")}</ul>
+        </div>
+        <div class="vp-cons">
+          <div class="vp-h">단점·유의점</div>
+          <ul>${(v.cons||[]).map(x=>`<li>${escapeHtml(x)}</li>`).join("")}</ul>
+        </div>
+      </div>
+      ${v.best_for ? `<div class="vp-bestfor"><strong>적합 상황.</strong> ${escapeHtml(v.best_for)}</div>` : ""}
+
+      ${vVerify ? `
+      <div class="vp-verify ${vVerify.verdict}">
+        <strong>자가검증:</strong> ${verdictLabel(vVerify.verdict)}
+        · 조정 신뢰도 ${Math.round((vVerify.adjusted_confidence||0)*100)}%
+        ${vVerify.explanation ? `<div class="muted" style="font-size:11px;margin-top:4px">${escapeHtml(vVerify.explanation)}</div>` : ""}
+        ${issues.length ? `<ul style="margin-top:6px;margin-left:16px;font-size:12px">${issues.map(i=>`<li>${escapeHtml(i)}</li>`).join("")}</ul>` : ""}
+      </div>` : ""}
+
+      <table class="preview-table" style="margin-top:14px">
+        <thead><tr>
+          <th>Part No</th><th>품명</th><th style="width:60px;text-align:center">수량</th>
+          <th style="width:120px;text-align:right">단가(${gradeLbl})</th><th>근거</th>
+        </tr></thead>
+        <tbody>${itemRows}</tbody>
+      </table>
+    </div>`;
+}
+
+function verdictBadge(v){
+  const m = { pass: "<span class='pill pill-ok'>PASS</span>",
+              needs_fix: "<span class='pill pill-warn'>FIX</span>",
+              insufficient_info: "<span class='pill pill-err'>INFO 부족</span>" };
+  return m[v] || "";
+}
+function verdictLabel(v){
+  const m = { pass: "통과", needs_fix: "수정 권장", insufficient_info: "정보 부족" };
+  return m[v] || v;
+}
+
+/* ============================================================
+   회신 초안 렌더 (Agent 3)
+============================================================ */
+function renderReplyDraft(reply, variant){
+  if(!reply) return "";
+  return `
+    <details class="email-details" open style="margin-top:22px">
+      <summary><strong>Agent 3 · 회신 초안</strong> ${variant ? `<span class="muted" style="font-size:11px;margin-left:6px">(기준: ${escapeHtml(variant.label)})</span>` : ""}</summary>
+      <div class="clarify-meta">
+        <label>제목</label><input type="text" id="replySubject" value="${escapeHtml(reply.subject||"")}">
+      </div>
+      <textarea id="replyBody" class="email-body" rows="10">${escapeHtml(reply.body_text||"")}</textarea>
+      ${(reply.open_questions||[]).length ? `<div class="email-notes" style="margin-top:8px"><strong>영업 확인 필요.</strong> ${reply.open_questions.map(q=>escapeHtml(q)).join(" · ")}</div>` : ""}
+      <div class="btn-row">
+        <button class="btn" onclick="copyReplyDraft()">본문 복사</button>
       </div>
     </details>`;
-  }
-  const conf = Math.round((reply.confidence||0)*100);
-  const open = (reply.open_questions||[]);
-  const ans = (reply.answered_questions||[]);
-  return `<details class="email-reply-draft" open>
-    <summary>✉ 회신 초안 <span class="reply-conf">신뢰도 ${conf}%${ans.length?` · 답변 ${ans.length}건`:""}${open.length?` · 확인필요 ${open.length}건`:""}</span></summary>
-    <div class="reply-body">
-      <label class="reply-label">제목</label>
-      <input type="text" class="reply-subject" id="replySubject" value="${escapeHtml(reply.subject||"")}">
-      <label class="reply-label">본문 (편집 가능)</label>
-      <textarea class="reply-text" id="replyBody" rows="14">${escapeHtml(reply.body_text||"")}</textarea>
-      ${open.length ? `
-        <div class="reply-warn">
-          <strong>⚠ 담당자 확인 필요:</strong>
-          <ul>${open.map(q=>`<li>${escapeHtml(q)}</li>`).join("")}</ul>
-        </div>` : ""}
-      <div class="reply-actions">
-        <button class="btn primary" onclick="copyReplyDraft()">클립보드 복사</button>
-        <button class="btn" onclick="copyReplyDraft(true)">본문만 복사</button>
-        <button class="btn" onclick="regenerateReplyDraft()">재생성</button>
-      </div>
-    </div>
-  </details>`;
 }
 
-function copyReplyDraft(bodyOnly){
-  const subj = (document.getElementById("replySubject")?.value||"").trim();
-  const body = (document.getElementById("replyBody")?.value||"").trim();
-  if(!body){ if(window.mkToast) mkToast("복사할 내용이 없습니다","warn"); return; }
-  const text = bodyOnly ? body : (subj ? `제목: ${subj}\n\n${body}` : body);
-  const onOk = ()=>{ if(window.mkToast) mkToast("회신 초안 복사됨","ok"); else alert("복사되었습니다."); };
-  const onErr = ()=>{
-    // fallback: select textarea and execCommand
-    const ta = document.getElementById("replyBody"); if(ta){ ta.select(); document.execCommand("copy"); onOk(); }
-    else alert("복사 실패. 수동으로 선택해 복사해주세요.");
-  };
-  if(navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(onOk, onErr);
-  else onErr();
+function copyReplyDraft(){
+  const s = document.getElementById("replySubject")?.value || "";
+  const b = document.getElementById("replyBody")?.value || "";
+  navigator.clipboard.writeText(`Subject: ${s}\n\n${b}`).then(()=>alert("회신 초안이 복사되었습니다."));
 }
 
-async function regenerateReplyDraft(){
-  if(!MK_EMAIL_PROPOSAL){ alert("재생성할 컨텍스트가 없습니다."); return; }
-  const curBody = (document.getElementById("replyBody")?.value||"").trim();
-  const origBody = MK_EMAIL_PROPOSAL.reply_draft?.body_text || "";
-  if(curBody && curBody !== origBody){
-    if(!confirm("편집한 내용이 있습니다. 재생성하면 덮어쓰여집니다. 계속할까요?")) return;
-  }
-  const out = document.getElementById("emailResult");
-  if(out){
-    const det = out.querySelector(".email-reply-draft .reply-body");
-    if(det) det.innerHTML = `<div class="email-step">회신 초안 재생성 중…</div>`;
-  }
+async function regenerateReplyForVariant(){
+  if(!MK_EMAIL_PROPOSAL) return;
+  const v = MK_EMAIL_PROPOSAL.variants[MK_ACTIVE_VARIANT];
+  if(!v) return;
   try{
-    const g3 = await runReplyAgent(
-      MK_EMAIL_PROPOSAL._emailBody || "",
-      MK_EMAIL_PROPOSAL._gradeRaw || { grade: MK_EMAIL_PROPOSAL.grade, customer: MK_EMAIL_PROPOSAL.customer },
-      MK_EMAIL_PROPOSAL._productsRaw || { items: MK_EMAIL_PROPOSAL.items.map(i=>({partNo:i.partNo, qty:i.qty})) }
-    );
+    const g3 = await runReplyAgent(MK_EMAIL_PROPOSAL._emailBody, MK_EMAIL_PROPOSAL._gradeRaw, v);
     MK_EMAIL_PROPOSAL.reply_draft = g3.data;
-    // 회신 섹션만 다시 렌더
-    const det = document.querySelector(".email-reply-draft");
-    if(det) det.outerHTML = renderReplyDraft(g3.data);
-  }catch(e){
-    if(window.mkToast) mkToast("재생성 실패: "+(e.message||e),"warn");
-    else alert("재생성 실패: "+(e.message||e));
-  }
+    const block = document.getElementById("replyDraftBlock");
+    if(block) block.innerHTML = renderReplyDraft(g3.data, v);
+  }catch(e){ alert("회신 재생성 실패: "+(e.message||e)); }
 }
 
-function priceForGrade(p, grade){
-  const g = grade==="dealer"?"dealer":grade==="oem"?"oem":"endUser";
-  const m = (window.MK_SETTINGS?.multipliers?.[grade]) ?? 100;
-  return Math.round(p[g]*m/100);
-}
-
+/* ============================================================
+   적용
+============================================================ */
 async function applyEmailProposal(){
   if(!MK_EMAIL_PROPOSAL){ alert("적용할 제안이 없습니다."); return; }
-  const { grade, customer, items, existingClient } = MK_EMAIL_PROPOSAL;
+  const v = MK_EMAIL_PROPOSAL.variants[MK_ACTIVE_VARIANT];
+  if(!v){ alert("선택된 견적안이 없습니다."); return; }
+  const { grade, customer, existingClient } = MK_EMAIL_PROPOSAL;
 
-  // [무조건 저장] 고객 — 기존이면 업데이트, 신규면 생성
   try{ await autoSaveClient(customer, grade, existingClient); }
-  catch(e){ console.warn("고객 자동 저장 실패(진행 계속):", e); }
+  catch(e){ console.warn("고객 자동 저장 실패(진행):", e); }
 
   if(customer){
     setIfExists("customerName", customer.company);
@@ -675,9 +1166,8 @@ async function applyEmailProposal(){
   }
   if(grade && typeof setGrade==="function") setGrade(grade);
 
-  // 장바구니 — 무조건 에이전트 제안으로 교체 (저장 스킵 옵션 없음)
   cart.length = 0;
-  items.forEach(it=>{
+  (v.items||[]).forEach(it=>{
     cart.push({ ...it.prod, qty: it.qty, customPrice: null });
   });
   renderCart();
@@ -687,12 +1177,12 @@ async function applyEmailProposal(){
     original: MK_EMAIL_PROPOSAL._emailBody || "",
     subject_summary: MK_EMAIL_PROPOSAL._gradeRaw?.subject_summary || "",
     reply_draft: MK_EMAIL_PROPOSAL.reply_draft || null,
-    customer: MK_EMAIL_PROPOSAL.customer || {}
+    customer: MK_EMAIL_PROPOSAL.customer || {},
+    variant: { label: v.label, positioning: v.positioning },
   };
   switchTab("quote");
 }
 
-// 고객 자동 저장 — 기존 매칭 있으면 update, 없으면 insert
 async function autoSaveClient(customer, grade, existingClient){
   if(!window.MK_USER) return;
   if(!customer) return;
@@ -711,17 +1201,32 @@ async function autoSaveClient(customer, grade, existingClient){
     address: customer.address || null,
     grade: grade || existingClient?.grade || "dealer",
   };
-  // 빈 값으로 기존 데이터를 덮어쓰지 않도록 update 시 null 필드는 제거
   const targetId = existingClient?.id;
   if(targetId){
     const patch = {};
     Object.keys(payload).forEach(k=>{ if(payload[k]!=null && payload[k]!=="") patch[k]=payload[k]; });
-    // 등급은 기존 DB 값이 있으면 변경하지 않는다 (기존 고객 정책)
     if(existingClient?.grade) delete patch.grade;
     if(Object.keys(patch).length === 0) return;
-    await sb().from("smartech_clients").update(patch).eq("id", targetId);
+    await window.MK_SB.from("smartech_clients").update(patch).eq("id", targetId);
   } else {
-    await sb().from("smartech_clients").insert({ ...payload, user_id: window.MK_USER.id });
+    await window.MK_SB.from("smartech_clients").insert({ ...payload, user_id: window.MK_USER.id });
   }
   if(typeof loadClients === "function") await loadClients();
 }
+
+function priceForGrade(p, grade){
+  const g = grade==="dealer"?"dealer":grade==="oem"?"oem":"endUser";
+  const m = (window.MK_SETTINGS?.multipliers?.[grade]) ?? 100;
+  return Math.round(p[g]*m/100);
+}
+
+/* ============================================================
+   초기화
+============================================================ */
+document.addEventListener("DOMContentLoaded", ()=>{
+  const orig = window.MK_ON_AUTH;
+  window.MK_ON_AUTH = async function(user){
+    if(typeof orig === "function") await orig(user);
+    renderPendingSessions();
+  };
+});

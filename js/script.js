@@ -104,6 +104,8 @@ function switchTab(t){
   if(active && lbl) lbl.textContent = active.textContent.replace(/\s*\d+\s*$/,"").trim();
   toggleTabMenu(false);
   window.scrollTo(0,0);
+  // 미리보기 탭으로 전환 시 항상 최신 내용으로 재렌더링 (회신 초안 포함)
+  if(t === "preview" && typeof renderPreview === "function") renderPreview();
   if(window.MK_ON_TAB)window.MK_ON_TAB(t);
 }
 
