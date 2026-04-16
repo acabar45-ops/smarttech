@@ -1,0 +1,387 @@
+{
+  "_meta": {
+    "source": "https://www.edwardsvacuum.com/ko-kr/our-products",
+    "scraped_at": "2026-04-16",
+    "purpose": "참고용 카탈로그 인덱스 — 견적 로직에는 사용하지 않음. 앱 견적은 2026 Price List (IV/SV/VTS) 914개 품목에만 한정됨. 이 파일은 추후 가격 정보 확보 시 머지용 레퍼런스.",
+    "categories_count": 33,
+    "models_count_approx": 100,
+    "notes": [
+      "one_line 은 페이지 헤더/요약에서 추출한 간결한 용도 설명",
+      "사양 수치(pumping_speed/ultimate)는 페이지에 명시된 경우만 포함",
+      "URL 은 /ko-kr/... 상대경로. 전체 경로는 https://www.edwardsvacuum.com 접두"
+    ]
+  },
+  "categories": [
+    {
+      "name": "케미컬 드라이 펌프",
+      "type_hint": "dry_pump_chemical",
+      "url": "/ko-kr/vacuum-pumps/our-products/chemical-dry-pumps",
+      "models": [
+        { "model": "CDX", "url": "/ko-kr/vacuum-pumps/our-products/chemical-dry-pumps/cdx", "one_line": "화학 공정용 건식 펌프" },
+        { "model": "EDP", "url": "/ko-kr/vacuum-pumps/our-products/chemical-dry-pumps/edp", "one_line": "화학 건식 펌핑 (산업/연구)" },
+        { "model": "EDS", "url": "/ko-kr/vacuum-pumps/our-products/chemical-dry-pumps/eds", "one_line": "스크류 타입 화학 건식 진공 펌프" }
+      ]
+    },
+    {
+      "name": "건식 다이아프램 펌프",
+      "type_hint": "dry_pump_diaphragm",
+      "url": "/ko-kr/vacuum-pumps/our-products/diaphragm-pumps",
+      "models": [
+        { "model": "XDD1", "url": "/ko-kr/vacuum-pumps/our-products/diaphragm-pumps", "one_line": "소형 터보 백업용 건식 다이아프램 펌프" },
+        { "model": "D-Lab", "url": "/ko-kr/vacuum-pumps/our-products/diaphragm-pumps", "one_line": "화학 실험실용 무윤활 모듈식 다이아프램 펌프" }
+      ]
+    },
+    {
+      "name": "건식 클로 펌프",
+      "type_hint": "dry_pump_claw",
+      "url": "/ko-kr/vacuum-pumps/our-products/dry-claw-pumps",
+      "models": [
+        { "model": "EDC", "url": "/ko-kr/vacuum-pumps/our-products/dry-claw-pumps/edc", "one_line": "고용량 건식 클로 펌프" },
+        { "model": "nEDC", "url": "/ko-kr/vacuum-pumps/our-products/dry-claw-pumps/nedc", "one_line": "차세대 건식 클로 펌프" },
+        { "model": "GV 시리즈", "url": "/ko-kr/vacuum-pumps/our-products/dry-claw-pumps/gv-series-dry-vacuum-pumps", "one_line": "건식 진공 펌프 시리즈" }
+      ]
+    },
+    {
+      "name": "건식 스크류 펌프",
+      "type_hint": "dry_pump_screw",
+      "url": "/ko-kr/vacuum-pumps/our-products/dry-screw-pumps",
+      "models": [
+        { "model": "GXS", "url": "/ko-kr/vacuum-pumps/our-products/dry-screw-pumps/gxs", "one_line": "범용 건식 스크류 진공 펌프" },
+        { "model": "IDX", "url": "/ko-kr/vacuum-pumps/our-products/dry-screw-pumps/idx", "one_line": "견고한 산업용 건식 스크류 펌프" },
+        { "model": "EDS", "url": "/ko-kr/vacuum-pumps/our-products/dry-screw-pumps/eds", "one_line": "다양한 공정용 건식 스크류 펌프" },
+        { "model": "EXS", "url": "/ko-kr/vacuum-pumps/our-products/dry-screw-pumps/exs", "one_line": "확장 용량 건식 스크류 펌프" }
+      ]
+    },
+    {
+      "name": "건식 스크롤 펌프",
+      "type_hint": "dry_pump_scroll",
+      "url": "/ko-kr/vacuum-pumps/our-products/dry-scroll-pumps",
+      "models": [
+        { "model": "EDO", "url": "/ko-kr/vacuum-pumps/our-products/dry-scroll-pumps/edo", "one_line": "산업용 저진공 건식 스크롤 펌프" },
+        { "model": "mXDS", "url": "/ko-kr/vacuum-pumps/our-products/dry-scroll-pumps/xds", "one_line": "저/중진공용 건식 스크롤 펌프" },
+        { "model": "nXDS", "url": "/ko-kr/vacuum-pumps/our-products/dry-scroll-pumps/xds", "one_line": "저/중진공용 건식 스크롤 펌프" },
+        { "model": "XDS", "url": "/ko-kr/vacuum-pumps/our-products/dry-scroll-pumps/xds", "one_line": "저/중진공용 건식 스크롤 펌프" }
+      ]
+    },
+    {
+      "name": "메카니칼 터보 분자 펌프",
+      "type_hint": "turbo_mechanical",
+      "url": "/ko-kr/vacuum-pumps/our-products/turbomolecular-pumps-mechanical",
+      "models": [
+        { "model": "nEXT55",   "url": "/ko-kr/vacuum-pumps/our-products/turbomolecular-pumps-mechanical", "one_line": "소형 범용 터보 분자 펌프", "pumping_speed": "55 l/s (N2)" },
+        { "model": "nEXT85",   "url": "/ko-kr/vacuum-pumps/our-products/turbomolecular-pumps-mechanical", "one_line": "엔트리급 펌핑스테이션 구성 터보", "pumping_speed": "85 l/s (N2)" },
+        { "model": "nEXT240",  "url": "/ko-kr/vacuum-pumps/our-products/turbomolecular-pumps-mechanical", "one_line": "중급 과학용 터보 분자 펌프", "pumping_speed": "240 l/s (N2)" },
+        { "model": "nEXT300",  "url": "/ko-kr/vacuum-pumps/our-products/turbomolecular-pumps-mechanical", "one_line": "표준 과학용 터보 분자 펌프", "pumping_speed": "300 l/s (N2)" },
+        { "model": "nEXT400",  "url": "/ko-kr/vacuum-pumps/our-products/turbomolecular-pumps-mechanical", "one_line": "고용량 터보 분자 펌프", "pumping_speed": "400 l/s (N2)" },
+        { "model": "nEXT730",  "url": "/ko-kr/vacuum-pumps/our-products/turbomolecular-pumps-mechanical", "one_line": "대형 산업/UHV 터보", "pumping_speed": "730 l/s (N2)" },
+        { "model": "nEXT930",  "url": "/ko-kr/vacuum-pumps/our-products/turbomolecular-pumps-mechanical", "one_line": "고처리량 산업용 터보", "pumping_speed": "925 l/s (N2)" },
+        { "model": "nEXT1230", "url": "/ko-kr/vacuum-pumps/our-products/turbomolecular-pumps-mechanical", "one_line": "UHV 최대급 터보", "pumping_speed": "1250 l/s (N2)" },
+        { "model": "nEXT Split Flow", "url": "/ko-kr/vacuum-pumps/our-products/turbomolecular-pumps-mechanical", "one_line": "다중 흡기구 터보 (복합/공간 제약 시스템)" }
+      ]
+    },
+    {
+      "name": "자기부상 터보 분자 펌프",
+      "type_hint": "turbo_mag",
+      "url": "/ko-kr/vacuum-pumps/our-products/turbomolecular-pumps-mag",
+      "models": [
+        { "model": "nEXT 2807M", "url": "/ko-kr/vacuum-pumps/our-products/turbomolecular-pumps-mag", "one_line": "소형 자기부상 터보 (코팅/연구)", "pumping_speed": "2500 l/s" },
+        { "model": "nEXT 3207M", "url": "/ko-kr/vacuum-pumps/our-products/turbomolecular-pumps-mag", "one_line": "컴팩트 자기부상 터보 (산업/코팅)", "pumping_speed": "3200 l/s" }
+      ]
+    },
+    {
+      "name": "터보 분자 펌핑 스테이션",
+      "type_hint": "turbo_station",
+      "url": "/ko-kr/vacuum-pumps/our-products/high-vacuum-pump-systems",
+      "models": [
+        { "model": "T-Station 85",  "url": "/ko-kr/vacuum-pumps/our-products/high-vacuum-pump-systems/t-station", "one_line": "엔트리급 터보 펌핑 스테이션" },
+        { "model": "T-Station 300", "url": "/ko-kr/vacuum-pumps/our-products/high-vacuum-pump-systems/t-station", "one_line": "고용량 엔트리급 터보 펌핑 스테이션" },
+        { "model": "TIC Pumping Station", "url": "/ko-kr/vacuum-pumps/our-products/high-vacuum-pump-systems/TIC-cart", "one_line": "고급 nEXT 터보 펌핑 스테이션" },
+        { "model": "TIC Cart XL",   "url": "/ko-kr/vacuum-pumps/our-products/high-vacuum-pump-systems/TIC-cart-XL", "one_line": "종합 대형 진공 솔루션" },
+        { "model": "ECAL1 교정 시스템", "url": "/ko-kr/vacuum-pumps/our-products/high-vacuum-pump-systems/calibration-system-ECAL1", "one_line": "진공 펌프 검증용 교정 시스템" }
+      ]
+    },
+    {
+      "name": "수봉식 진공 펌프 및 컴프레서",
+      "type_hint": "liquid_ring",
+      "url": "/ko-kr/vacuum-pumps/our-products/liquid-ring-pumps",
+      "models": [
+        { "model": "1단 베어샤프트 액체링 펌프",  "url": "/ko-kr/vacuum-pumps/our-products/liquid-ring-pumps/single-stage-bareshaft", "one_line": "1단계 베어샤프트 액체링 펌프" },
+        { "model": "1단 랜턴 액체링 펌프",        "url": "/ko-kr/vacuum-pumps/our-products/liquid-ring-pumps/single-stage-lantern", "one_line": "1단계 랜턴 타입 액체링 펌프" },
+        { "model": "1단 모터 통합 액체링 펌프",   "url": "/ko-kr/vacuum-pumps/our-products/liquid-ring-pumps/single-stage-motor-mounted", "one_line": "모터 통합형 1단계 액체링 펌프" },
+        { "model": "2단 베어샤프트 액체링 펌프",  "url": "/ko-kr/vacuum-pumps/our-products/liquid-ring-pumps/double-stage-bareshaft", "one_line": "2단계 베어샤프트 액체링 펌프" },
+        { "model": "수봉식 컴프레서",             "url": "/ko-kr/vacuum-pumps/our-products/liquid-ring-pumps/liquid-ring-compressors", "one_line": "액체링 기반 압축기" }
+      ]
+    },
+    {
+      "name": "메카니칼 부스터 펌프",
+      "type_hint": "booster",
+      "url": "/ko-kr/vacuum-pumps/our-products/mechanical-booster-pumps",
+      "models": [
+        { "model": "EH",     "url": "/ko-kr/vacuum-pumps/our-products/mechanical-booster-pumps/eh", "one_line": "EH 메카니컬 부스터 펌프" },
+        { "model": "HV",     "url": "/ko-kr/vacuum-pumps/our-products/mechanical-booster-pumps/hv", "one_line": "HV 메카니컬 부스터 펌프" },
+        { "model": "Stokes", "url": "/ko-kr/vacuum-pumps/our-products/mechanical-booster-pumps/stokes", "one_line": "Stokes 부스터 펌프" },
+        { "model": "GMB",    "url": "/ko-kr/vacuum-pumps/our-products/mechanical-booster-pumps/gmb40k", "one_line": "대용량 루츠 부스터 펌프" }
+      ]
+    },
+    {
+      "name": "건식 멀티 스테이지 루츠 펌프",
+      "type_hint": "multistage_roots",
+      "url": "/ko-kr/vacuum-pumps/our-products/multistage-roots-pumps",
+      "models": [
+        { "model": "nXLi", "url": "/ko-kr/vacuum-pumps/our-products/multistage-roots-pumps/nxli", "one_line": "건식 다단 루츠 펌프" },
+        { "model": "nXRi", "url": "/ko-kr/vacuum-pumps/our-products/multistage-roots-pumps/nxri", "one_line": "건식 다단 루츠 펌프" },
+        { "model": "Acoustic Enclosures", "url": "/ko-kr/vacuum-pumps/our-products/multistage-roots-pumps/acoustic-enclosures", "one_line": "방음 장치" }
+      ]
+    },
+    {
+      "name": "오일 급유식 스크류 펌프",
+      "type_hint": "oil_injected_screw",
+      "url": "/ko-kr/vacuum-pumps/our-products/oil-injected-screw-pumps",
+      "models": [
+        { "model": "EOS350i",  "url": "/ko-kr/vacuum-pumps/our-products/oil-injected-screw-pumps", "one_line": "소형 400 m³/h 급 오일 급유식 스크류" },
+        { "model": "EOS585i",  "url": "/ko-kr/vacuum-pumps/our-products/oil-injected-screw-pumps", "one_line": "중형 560 m³/h 급" },
+        { "model": "EOS730i",  "url": "/ko-kr/vacuum-pumps/our-products/oil-injected-screw-pumps", "one_line": "중형 730 m³/h 급" },
+        { "model": "EOS900i",  "url": "/ko-kr/vacuum-pumps/our-products/oil-injected-screw-pumps", "one_line": "중형 900 m³/h 급" },
+        { "model": "EOS1300i", "url": "/ko-kr/vacuum-pumps/our-products/oil-injected-screw-pumps", "one_line": "대형 1250 m³/h 급" },
+        { "model": "EOS1400i", "url": "/ko-kr/vacuum-pumps/our-products/oil-injected-screw-pumps", "one_line": "대형 1400 m³/h 급" },
+        { "model": "EOS1600i", "url": "/ko-kr/vacuum-pumps/our-products/oil-injected-screw-pumps", "one_line": "대형 1590 m³/h 급" },
+        { "model": "EOS1700i", "url": "/ko-kr/vacuum-pumps/our-products/oil-injected-screw-pumps", "one_line": "대형 1620 m³/h 급" },
+        { "model": "EOS1900i", "url": "/ko-kr/vacuum-pumps/our-products/oil-injected-screw-pumps", "one_line": "대형 1810 m³/h 급" },
+        { "model": "EOS2000i", "url": "/ko-kr/vacuum-pumps/our-products/oil-injected-screw-pumps", "one_line": "대형 1818 m³/h 급" },
+        { "model": "EOS3800i", "url": "/ko-kr/vacuum-pumps/our-products/oil-injected-screw-pumps", "one_line": "초대형 3828 m³/h 급" },
+        { "model": "EOS4600i", "url": "/ko-kr/vacuum-pumps/our-products/oil-injected-screw-pumps", "one_line": "초대형 4478 m³/h 급" },
+        { "model": "EOS5400i", "url": "/ko-kr/vacuum-pumps/our-products/oil-injected-screw-pumps", "one_line": "초대형 5004 m³/h 급" }
+      ]
+    },
+    {
+      "name": "오일 로터리 베인 펌프 - 단일 단계",
+      "type_hint": "rotary_vane_single",
+      "url": "/ko-kr/vacuum-pumps/our-products/oil-rotary-vane-pumps-single-stage",
+      "models": [
+        { "model": "nES 싱글 스테이지", "url": "/ko-kr/vacuum-pumps/our-products/oil-rotary-vane-pumps-single-stage/nes-series", "one_line": "단일 단계 오일 로터리 베인 펌프 시리즈" },
+        { "model": "nES 싱글 스테이지 Ex", "url": "/ko-kr/vacuum-pumps/our-products/oil-rotary-vane-pumps-single-stage/nes-ex-series", "one_line": "방폭형 단일 단계 로터리 베인 펌프" }
+      ]
+    },
+    {
+      "name": "오일 로터리 베인 펌프 - 2단",
+      "type_hint": "rotary_vane_two",
+      "url": "/ko-kr/vacuum-pumps/our-products/oil-rotary-vane-pumps-two-stage",
+      "models": [
+        { "model": "E2M0.7-28", "url": "/ko-kr/vacuum-pumps/our-products/oil-rotary-vane-pumps-two-stage/e2m", "one_line": "소형 2단 로터리 베인" },
+        { "model": "E2M 40-275", "url": "/ko-kr/vacuum-pumps/our-products/oil-rotary-vane-pumps-two-stage/e2m-40-275", "one_line": "중/대형 2단 로터리 베인" },
+        { "model": "E2S", "url": "/ko-kr/vacuum-pumps/our-products/oil-rotary-vane-pumps-two-stage/e2s", "one_line": "2단 로터리 베인 진공 펌프" },
+        { "model": "RV",  "url": "/ko-kr/vacuum-pumps/our-products/oil-rotary-vane-pumps-two-stage/rv", "one_line": "2단 로터리 베인 진공 펌프" }
+      ]
+    },
+    {
+      "name": "로터리 피스톤 펌프",
+      "type_hint": "rotary_piston",
+      "url": "/ko-kr/vacuum-pumps/our-products/rotary-piston-pumps",
+      "models": [
+        { "model": "212 J", "url": "/ko-kr/vacuum-pumps/our-products/rotary-piston-pumps", "one_line": "234 m³/h (50Hz), 5.5 kW 로터리 피스톤" },
+        { "model": "412 J", "url": "/ko-kr/vacuum-pumps/our-products/rotary-piston-pumps", "one_line": "442 m³/h (50Hz), 11 kW 로터리 피스톤" },
+        { "model": "612 J", "url": "/ko-kr/vacuum-pumps/our-products/rotary-piston-pumps", "one_line": "884 m³/h (50Hz), 11 kW 로터리 피스톤" }
+      ]
+    },
+    {
+      "name": "초고진공 펌프 (UHV)",
+      "type_hint": "uhv",
+      "url": "/ko-kr/vacuum-pumps/our-products/uhv-pumps",
+      "models": [
+        { "model": "HyTan NEG-이온 펌프",       "url": "/ko-kr/vacuum-pumps/our-products/uhv-pumps", "one_line": "NEG/이온 결합형 소형 UHV 펌프 100~500 l/s (H2)" },
+        { "model": "Titan 이온 펌프",            "url": "/ko-kr/vacuum-pumps/our-products/uhv-pumps", "one_line": "이온 캡처 펌프 10⁻⁵~10⁻¹² mbar, 0.2~1200 l/s (N2)" },
+        { "model": "티타늄 승화 펌프 (TSP)",     "url": "/ko-kr/vacuum-pumps/our-products/uhv-pumps", "one_line": "TSP 펌프 10,000 l/s 이상 (H2)" },
+        { "model": "NEG 카트리지 N200",          "url": "/ko-kr/vacuum-pumps/our-products/uhv-pumps", "one_line": "NEG 게터 펌프 55~412 l/s" },
+        { "model": "DIGITEL SPCe",              "url": "/ko-kr/vacuum-pumps/our-products/uhv-pumps", "one_line": "단일 이온 펌프(≤75 l/s) 컨트롤러" },
+        { "model": "DIGITEL QPC",               "url": "/ko-kr/vacuum-pumps/our-products/uhv-pumps", "one_line": "이온 펌프 4개(≤100 l/s) 관리 컨트롤러" },
+        { "model": "DIGITEL MPCq",              "url": "/ko-kr/vacuum-pumps/our-products/uhv-pumps", "one_line": "대형 이온 펌프 4개 고전류 관리" }
+      ]
+    },
+    {
+      "name": "맞춤 설계 솔루션",
+      "type_hint": "custom",
+      "url": "/ko-kr/vacuum-pumps/our-products/custom-engineered-products",
+      "models": [
+        { "model": "Steam Ejector Systems",        "url": "/ko-kr/vacuum-pumps/our-products/custom-engineered-products", "one_line": "공정 산업용 다단 스팀 이젝터 진공 시스템" },
+        { "model": "Seawater Deaeration Equipment", "url": "/ko-kr/vacuum-pumps/our-products/custom-engineered-products", "one_line": "FPSO/해양 생산 시설용 해수 탈기 설비" },
+        { "model": "High Pressure Feedwater Heaters","url": "/ko-kr/vacuum-pumps/our-products/custom-engineered-products", "one_line": "발전소용 고압 급수 가열기 교체 설계" },
+        { "model": "Hybrid & Liquid Ring Vacuum Pumps", "url": "/ko-kr/vacuum-pumps/our-products/custom-engineered-products", "one_line": "공정 산업용 하이브리드·액체링 펌핑 시스템" }
+      ]
+    },
+    {
+      "name": "Systems + Solutions",
+      "type_hint": "systems",
+      "url": "/ko-kr/vacuum-pumps/our-products/systems-and-solutions",
+      "models": [
+        { "model": "Standard Systems",   "url": "/ko-kr/vacuum-pumps/our-products/systems-and-solutions/standard-systems", "one_line": "표준 응용용 기성 진공 솔루션" },
+        { "model": "Specialised Systems","url": "/ko-kr/vacuum-pumps/our-products/systems-and-solutions/specialised-systems", "one_line": "고객 요건 맞춤 턴키 프로젝트" }
+      ]
+    },
+    {
+      "name": "직접 압력 측정 게이지",
+      "type_hint": "gauge_direct",
+      "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/direct-pressure-measurement-gauges",
+      "models": [
+        { "model": "ASG2",           "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/direct-pressure-measurement-gauges", "one_line": "액티브 스트레인 게이지 1~2000 mbar (가스 독립)" },
+        { "model": "Barocel 7000",   "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/direct-pressure-measurement-gauges", "one_line": "정전용량 압력 게이지 (온도 보상), 100 mTorr~1000 Torr" },
+        { "model": "Barocel 7025",   "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/direct-pressure-measurement-gauges", "one_line": "가열형 정전용량 게이지 (응축 대응)" }
+      ]
+    },
+    {
+      "name": "간접 압력 측정 게이지",
+      "type_hint": "gauge_indirect",
+      "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/indirect-pressure-measurement-gauges",
+      "models": [
+        { "model": "APG200",  "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/indirect-pressure-measurement-gauges", "one_line": "액티브 Pirani 게이지 (360° LED)" },
+        { "model": "nAPG200", "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/indirect-pressure-measurement-gauges", "one_line": "APG200 디지털 버전 (RS232/485)" },
+        { "model": "AIM200",  "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/indirect-pressure-measurement-gauges", "one_line": "액티브 인버티드 마그네트론 1e-2~1e-9 mbar" },
+        { "model": "nAIM200", "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/indirect-pressure-measurement-gauges", "one_line": "AIM200 디지털 버전 (RS232/485)" },
+        { "model": "WRG200",  "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/indirect-pressure-measurement-gauges", "one_line": "와이드 레인지 냉음극 게이지, 대기압~1e-9 mbar" },
+        { "model": "nWRG200", "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/indirect-pressure-measurement-gauges", "one_line": "WRG200 디지털 버전" },
+        { "model": "APGX-H",  "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/indirect-pressure-measurement-gauges", "one_line": "선형 대류 게이지 1333~3e-4 mbar" },
+        { "model": "AIGX",    "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/indirect-pressure-measurement-gauges", "one_line": "컴팩트 액티브 이온 게이지 6.6e-2~6.6e-10 mbar" },
+        { "model": "WRH",     "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/indirect-pressure-measurement-gauges", "one_line": "와이드 레인지 열음극 게이지, 대기압~1e-10 mbar" }
+      ]
+    },
+    {
+      "name": "기계식 진공 게이지 및 스위치",
+      "type_hint": "gauge_mechanical",
+      "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/mechanical-vacuum-gauges-and-switches",
+      "models": [
+        { "model": "CG16K", "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/mechanical-vacuum-gauges-and-switches", "one_line": "캡슐 다이얼 게이지 0~1040 mbar" },
+        { "model": "P4",    "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/mechanical-vacuum-gauges-and-switches", "one_line": "휴대용 압전 게이지 2000~1 mbar" },
+        { "model": "P5",    "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/mechanical-vacuum-gauges-and-switches", "one_line": "휴대용 복합 센서 게이지 1200~5e-5 mbar" },
+        { "model": "P3",    "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/mechanical-vacuum-gauges-and-switches", "one_line": "배터리 구동 휴대용 게이지 1200~5e-4 mbar" },
+        { "model": "VS16K", "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/mechanical-vacuum-gauges-and-switches", "one_line": "고진공용 정밀 압력 제어 스위치" },
+        { "model": "IS16K", "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/mechanical-vacuum-gauges-and-switches", "one_line": "조정 가능 설정값 진공 스위치" }
+      ]
+    },
+    {
+      "name": "진공 시스템 컨트롤러",
+      "type_hint": "controller",
+      "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/vacuum-system-controllers",
+      "models": [
+        { "model": "ADC",    "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/vacuum-system-controllers", "one_line": "컴팩트 단일 라인 진공 게이지 컨트롤러 (LED)" },
+        { "model": "TIC",    "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/vacuum-system-controllers", "one_line": "대형 디스플레이 다용도 시스템 컨트롤러 (3/6 게이지)" },
+        { "model": "PGC201", "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/vacuum-system-controllers", "one_line": "PRG20K×2 + CPG35K×1 패시브 컨트롤러" },
+        { "model": "PGC202", "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/vacuum-system-controllers", "one_line": "PRG20K×2 + IG40BA/EX×1 패시브 컨트롤러" },
+        { "model": "TAG",    "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/vacuum-system-controllers", "one_line": "EXT/nEXT 터보 호환 컴팩트 시스템 컨트롤러" }
+      ]
+    },
+    {
+      "name": "EJGO - 진공 펌프용 컨트롤러",
+      "type_hint": "controller_ejgo",
+      "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/ejgo-controllers",
+      "models": []
+    },
+    {
+      "name": "EJGO MC - 중앙 컨트롤러",
+      "type_hint": "controller_ejgo_central",
+      "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/ejgo-mc",
+      "models": [
+        { "model": "EJGO MC Standard", "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/ejgo-mc", "one_line": "VSD/고정속도 펌프 8대 지원, 최대 10% 에너지 절감" },
+        { "model": "EJGO MC Premium",  "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/ejgo-mc", "one_line": "펌프 20대 관리, 최대 20% 에너지 절감 (고급 알고리즘)" }
+      ]
+    },
+    {
+      "name": "가스 분석기 (RGA)",
+      "type_hint": "rga",
+      "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/residual-gas-analysers",
+      "models": [
+        { "model": "PRA",    "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/residual-gas-analysers", "one_line": "1차 잔류 가스 분석기 (4 variants)" },
+        { "model": "WRA",    "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/residual-gas-analysers", "one_line": "프리미엄 잔류 가스 분석기 (1~200 또는 1~300 amu)" },
+        { "model": "eRGA1",  "url": "/ko-kr/vacuum-pumps/our-products/measurement-and-control/residual-gas-analysers", "one_line": "RGA + T-Station 85 통합 컴팩트 시스템" }
+      ]
+    },
+    {
+      "name": "헬륨 누출 감지기 (ELD500)",
+      "type_hint": "leak_detector",
+      "url": "/ko-kr/vacuum-pumps/our-products/leak-detection/eld500-helium-leak-detector",
+      "models": [
+        { "model": "ELD500",      "url": "/ko-kr/vacuum-pumps/our-products/leak-detection/eld500-helium-leak-detector", "one_line": "휴대용 헬륨 리크 디텍터 (진공/스니퍼)" },
+        { "model": "ELD500 FLEX", "url": "/ko-kr/vacuum-pumps/our-products/leak-detection/eld500-helium-leak-detector", "one_line": "ELD500 플렉서블 변형" },
+        { "model": "ELD500 DRY",  "url": "/ko-kr/vacuum-pumps/our-products/leak-detection/eld500-helium-leak-detector", "one_line": "ELD500 드라이 펌프 버전" }
+      ]
+    },
+    {
+      "name": "이동식 진공 누출 감지기",
+      "type_hint": "leak_detector_portable",
+      "url": "/ko-kr/vacuum-pumps/our-products/leak-detection/gascheck-portable-leak-detector",
+      "models": [
+        { "model": "GasCheck G4", "url": "/ko-kr/vacuum-pumps/our-products/leak-detection/gascheck-portable-leak-detector", "one_line": "휴대용 가스 리크 디텍터 (마이크로 TCS + piezo pump)" }
+      ]
+    },
+    {
+      "name": "ELD30 산업용 헬륨 누출 감지기",
+      "type_hint": "leak_detector_industrial",
+      "url": "/ko-kr/vacuum-pumps/our-products/leak-detection/eld30-industrial-leak-detector",
+      "models": [
+        { "model": "ELD30",      "url": "/ko-kr/vacuum-pumps/our-products/leak-detection/eld30-industrial-leak-detector", "one_line": "로터리 베인 기반 산업용 고처리량 리크 디텍터" },
+        { "model": "ELD30 dry",  "url": "/ko-kr/vacuum-pumps/our-products/leak-detection/eld30-industrial-leak-detector", "one_line": "오일프리 건식 스크롤 버전 (제약/의료)" },
+        { "model": "ELD30 flex", "url": "/ko-kr/vacuum-pumps/our-products/leak-detection/eld30-industrial-leak-detector", "one_line": "컴팩트 이동형 리크 디텍터" }
+      ]
+    },
+    {
+      "name": "앵글 밸브",
+      "type_hint": "valve_angle",
+      "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/angle-valves",
+      "models": [
+        { "model": "LCPVEK", "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/angle-valves", "one_line": "솔레노이드 앵글 셔트오프 밸브 (컴팩트)" },
+        { "model": "PVEK",   "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/angle-valves", "one_line": "전자기 직각 셔트오프 밸브 ~1e-9 mbar" },
+        { "model": "PVMK",   "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/angle-valves", "one_line": "수동 레버 직각 벨로즈 밸브 1e-9~2100 mbar" },
+        { "model": "PVPK",   "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/angle-valves", "one_line": "공압 단일작동 스프링리턴 직각 밸브" }
+      ]
+    },
+    {
+      "name": "게이트 밸브",
+      "type_hint": "valve_gate",
+      "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/gate-valves",
+      "models": [
+        { "model": "BGV Manual",        "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/gate-valves", "one_line": "수동 벨로즈 실 게이트 밸브 (그리스 프리)" },
+        { "model": "BGV MK3 Pneumatic", "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/gate-valves", "one_line": "공압 게이트 밸브 (reed switch + LED)" },
+        { "model": "BGV LOTO",          "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/gate-valves", "one_line": "공압 게이트 밸브 (LOTO 안전장치)" },
+        { "model": "GV Manual/Pneumatic","url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/gate-valves", "one_line": "UHV 스테인리스 벨로즈 게이트 밸브 (진공 브레이징)" }
+      ]
+    },
+    {
+      "name": "특수 밸브",
+      "type_hint": "valve_special",
+      "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/special-valves",
+      "models": [
+        { "model": "AV5A",    "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/special-valves", "one_line": "수동 공기 유입 밸브 (SC5 커플링)" },
+        { "model": "AV10K",   "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/special-valves", "one_line": "수동 공기 유입 밸브 (NW10)" },
+        { "model": "BRV",     "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/special-valves", "one_line": "백킹/러핑 밸브 (수동·공압, 2포트)" },
+        { "model": "IPV10EK", "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/special-valves", "one_line": "솔레노이드 공기 유입 밸브 (NW)" },
+        { "model": "QSB",     "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/special-valves", "one_line": "쿼터스윙 버터플라이 밸브 (고 전도도)" },
+        { "model": "VIV",     "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/special-valves", "one_line": "고전도도 진공 분리 밸브 (역류 방지)" }
+      ]
+    },
+    {
+      "name": "인라인 밸브",
+      "type_hint": "valve_inline",
+      "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/in-line-valves",
+      "models": [
+        { "model": "IBV ISO-KF",   "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/in-line-valves", "one_line": "볼 밸브 풀보어 (NW16/25/40/50)" },
+        { "model": "Speedivalves", "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/in-line-valves", "one_line": "다이아프램 실 인라인 분리 밸브 (<1e-6 mbar·l/s)" },
+        { "model": "IPVMK",        "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/in-line-valves", "one_line": "수동 레버 벨로즈 직각 밸브 (고 전도도)" },
+        { "model": "IPVPK",        "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/in-line-valves", "one_line": "공압 단일작동 인라인 셧오프 (NW16~50, 5M cycle)" },
+        { "model": "IPVEK",        "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/in-line-valves", "one_line": "솔레노이드 전자기 밸브 (1e-9 mbar 대응)" },
+        { "model": "SIPVP",        "url": "/ko-kr/vacuum-pumps/our-products/valves-for-vacuum-systems/in-line-valves", "one_line": "소프트 스타트 공압 인라인 밸브 (orifice 교체형)" }
+      ]
+    },
+    {
+      "name": "하드웨어 및 피팅",
+      "type_hint": "hardware_fittings",
+      "url": "/ko-kr/vacuum-pumps/our-products/hardware-and-fittings",
+      "models": [
+        { "model": "NW Flange (ISO-KF) Assemblies", "url": "/ko-kr/vacuum-pumps/our-products/hardware-and-fittings", "one_line": "저/고진공 산업 표준 플랜지" },
+        { "model": "ISO Flange (ISO-F/K)",          "url": "/ko-kr/vacuum-pumps/our-products/hardware-and-fittings", "one_line": "반도체용 고정·회전형 플랜지" },
+        { "model": "UHV ConFlat (CF)",              "url": "/ko-kr/vacuum-pumps/our-products/hardware-and-fittings", "one_line": "구리 실 금속-금속 실 시스템" },
+        { "model": "Clamps & Clamping Rings",       "url": "/ko-kr/vacuum-pumps/our-products/hardware-and-fittings", "one_line": "SS/폴리머/알루미늄 클램프" },
+        { "model": "Seals (O-ring/Metal)",          "url": "/ko-kr/vacuum-pumps/our-products/hardware-and-fittings", "one_line": "O링·캐비티 실·메탈 실" },
+        { "model": "Pipeline Components",           "url": "/ko-kr/vacuum-pumps/our-products/hardware-and-fittings", "one_line": "알루미늄·스테인리스 배관 부품" },
+        { "model": "Bellows & Flexible Piping",     "url": "/ko-kr/vacuum-pumps/our-products/hardware-and-fittings", "one_line": "벨로즈 · 브레이디드 플렉시블 배관" }
+      ]
+    }
+  ]
+}
