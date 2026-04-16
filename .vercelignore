@@ -1,0 +1,17 @@
+node_modules
+.DS_Store
+Thumbs.db
+*.log
+.env
+.env.*
+!.env.example
+.vscode
+.idea
+*.swp
+*.swo
+pdf_images/
+pdf_text.txt
+*.pdf
+*.xlsx
+KakaoTalk_*.png
+smartech_quotation_v3.html

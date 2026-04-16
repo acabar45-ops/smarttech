@@ -516,23 +516,17 @@ function matchExistingClient(input){
 ============================================================ */
 function shouldEscalate(email, reqs){
   const body = String(email||"").trim();
+  // 본문이 너무 짧고 이메일/전화 외에 쓸만한 정보 없음
   const strippedLen = body.replace(/[\s\r\n]+/g," ").length;
-
-  // 1) 본문이 매우 짧거나 이메일 주소 외에 거의 없음
+  const hasEmailOnly = /^.{0,80}$/s.test(body) && /@/.test(body);
   if(strippedLen < MK_ESCALATE_LEN_MIN) return true;
-  if(/^.{0,80}$/s.test(body) && /@/.test(body) && strippedLen < 80) return true;
-
-  // 2) Agent 1.5 가 핵심 기술 정보를 전혀 못 뽑음 — "너무 모호"의 신호
+  if(hasEmailOnly) return true;
+  // Agent 1.5 추출 결과가 모두 비어있고 confidence 매우 낮음
   if(reqs){
-    const allEmpty = (!reqs.models_mentioned?.length)
-                  && (!reqs.processes?.length)
-                  && (!reqs.applications?.length)
-                  && (!reqs.accessories_needed?.length)
+    const allEmpty = (!reqs.models_mentioned?.length) && (!reqs.processes?.length)
+                  && (!reqs.applications?.length) && (!reqs.accessories_needed?.length)
                   && !reqs.vacuum_level;
-    // 핵심 공란이면 confidence 무관하게 에스컬레이션 (너무 모호한 첫 문의)
-    if(allEmpty) return true;
-    // 또는 confidence 극저 + 본문 길이 짧음
-    if((reqs.confidence ?? 1) < MK_ESCALATE_CONF_MAX && strippedLen < 120) return true;
+    if(allEmpty && (reqs.confidence ?? 1) < MK_ESCALATE_CONF_MAX) return true;
   }
   return false;
 }
@@ -872,8 +866,8 @@ async function enterEscalationMode(email, gradeData, reqsData, existingSessionId
   if(sessionId){
     await updateSession(sessionId, {
       clarification: askData,
-      status: "pending_reply",
-      last_proposal: { escalated: true, to: "rokmclmj@gmail.com", created_at: new Date().toISOString() }
+      status: "abandoned",
+      last_proposal: { escalated: true, to: "rokmclmj@gmail.com" }
     });
   }
   MK_CURRENT_SESSION_ID = sessionId;
@@ -1044,12 +1038,7 @@ async function continueSession(sessionId){
     customer: { company:null, contact:null, title:null, phone:null, email:null, address:null },
     _existing_client: sess.matched_client_id ? { id: sess.matched_client_id } : null
   };
-  // 에스컬레이션 세션이면 에스컬레이션 카드로 복원
-  if(sess.last_proposal?.escalated){
-    renderEscalationCard(gradeData, sess.original_email || "", sess.clarification || {});
-    return;
-  }
-  renderClarificationCard(gradeData, null, sess.clarification || {}, ["세션 이어가기 — 고객 회신을 붙여넣으세요."], sessionId, sess.clarify_rounds || 1);
+  renderClarificationCard(gradeData, null, sess.clarification || {}, ["세션 이어가기 — 고객 회신을 붙여넣으세요."], sessionId);
   if(sess.customer_reply){
     const rta = document.getElementById("customerReplyBody");
     if(rta) rta.value = sess.customer_reply;
@@ -1064,43 +1053,13 @@ async function renderPendingSessions(){
   if(!wrap) return;
   const list = await loadPendingSessions();
   if(!list.length){ wrap.innerHTML = ""; return; }
-
-  const escalated = list.filter(s => s.last_proposal?.escalated);
-  const clarifying = list.filter(s => !s.last_proposal?.escalated);
-
-  const escalatedCard = escalated.length ? `
-    <div class="card" style="border-left:3px solid #B3261E;background:#FEF2F2;padding:18px 22px;margin-bottom:12px">
-      <div class="section-title" style="margin-top:0">
-        🚨 이명재 대표 확인 필요 (에스컬레이션)
-        <span class="pill pill-err" style="margin-left:8px">${escalated.length}</span>
-      </div>
-      <table class="agent-review" style="width:100%">
-        <thead><tr><th>수신일시</th><th>고객</th><th>원문 요지</th><th style="width:200px"></th></tr></thead>
-        <tbody>
-        ${escalated.map(s=>{
-          const dt = (s.updated_at||s.created_at||"").slice(0,16).replace("T"," ");
-          const excerpt = (s.original_email||"").slice(0,60).replace(/\s+/g," ");
-          return `<tr>
-            <td>${escapeHtml(dt)}</td>
-            <td>${escapeHtml(s.clarification?.subject||"(제목 없음)")}</td>
-            <td class="muted">${escapeHtml(excerpt)}${s.original_email && s.original_email.length>60 ? "…" : ""}</td>
-            <td style="text-align:right">
-              <button class="add-btn" onclick="continueSession('${s.id}')">열기</button>
-              <button class="del-btn" onclick="abandonSession('${s.id}')">처리완료</button>
-            </td>
-          </tr>`;
-        }).join("")}
-        </tbody>
-      </table>
-    </div>` : "";
-
-  const clarifyCard = clarifying.length ? `
+  wrap.innerHTML = `
     <div class="card" style="border-left:3px solid #C7921F;background:#FFFAEF;padding:18px 22px">
-      <div class="section-title" style="margin-top:0">회신 대기 중인 명확화 세션 <span class="pill" style="margin-left:8px">${clarifying.length}</span></div>
+      <div class="section-title" style="margin-top:0">회신 대기 중인 명확화 세션 <span class="pill" style="margin-left:8px">${list.length}</span></div>
       <table class="agent-review" style="width:100%">
         <thead><tr><th>업데이트</th><th>질문 제목</th><th>요청 항목</th><th style="width:70px">라운드</th><th style="width:160px"></th></tr></thead>
         <tbody>
-        ${clarifying.map(s=>{
+        ${list.map(s=>{
           const dt = (s.updated_at||s.created_at||"").slice(0,16).replace("T"," ");
           const subj = s.clarification?.subject || "(제목 없음)";
           const fields = (s.clarification?.asked_fields||[]).join(", ");
@@ -1118,9 +1077,7 @@ async function renderPendingSessions(){
         }).join("")}
         </tbody>
       </table>
-    </div>` : "";
-
-  wrap.innerHTML = escalatedCard + clarifyCard;
+    </div>`;
 }
 
 async function abandonSession(id){

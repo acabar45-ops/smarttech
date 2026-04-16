@@ -1,0 +1,14 @@
+{
+  "name": "smartech-quotation",
+  "version": "3.0.0",
+  "description": "스마텍 견적서 자동화 시스템 — 정적 웹앱 (Supabase + Claude 프록시)",
+  "private": true,
+  "scripts": {
+    "dev": "live-server --port=5500 --no-browser --ignore=node_modules",
+    "start": "live-server --port=5500 --ignore=node_modules",
+    "serve": "python -m http.server 5500"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}
