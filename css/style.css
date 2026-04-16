@@ -1633,3 +1633,27 @@ tr:hover td{background:var(--mk-bg-soft);box-shadow:inset 3px 0 0 var(--mk-navy)
   font-family:var(--sans);font-size:13px;background:#fff;outline:none;
 }
 .clarify-meta input[type="text"]:focus{border-color:var(--mk-navy)}
+
+/* ============================================================
+   PWA Install button
+============================================================ */
+.install-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  margin-left:auto;margin-right:10px;
+  padding:6px 14px;
+  background:#fff;color:#024f8c;
+  border:1px solid #fff;border-radius:0;
+  font-family:var(--sans);font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:0.12em;
+  cursor:pointer;transition:background .15s, color .15s;
+}
+.install-btn:hover{background:var(--mk-navy);color:#fff;border-color:var(--mk-navy)}
+.install-btn span{font-size:14px;line-height:1}
+
+/* 독립 창(PWA 설치 후) — 브라우저 UI 숨김 보정 */
+@media (display-mode: standalone), (display-mode: window-controls-overlay){
+  body{ -webkit-user-select:none; user-select:none; }
+  .install-btn{ display:none !important }
+  /* 텍스트 입력 필드는 선택 허용 */
+  input, textarea, [contenteditable]{ -webkit-user-select:text; user-select:text }
+}

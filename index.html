@@ -3,24 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#024f8c">
+<meta name="theme-color" content="#051C2C">
+<link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="스마텍 견적">
 <meta name="format-detection" content="telephone=yes">
-<link rel="apple-touch-icon" href="images/smartech_logo.png">
+<link rel="apple-touch-icon" href="images/icon-192.png">
 <title>스마텍 견적서 자동화 시스템 v3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Lora:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=22">
+<link rel="stylesheet" href="css/style.css?v=23">
 </head>
 <body>
 <div class="container">
   <div class="brandbar">
     <img src="images/smartech_logo.png" alt="SMARTECH" class="brand-logo">
     <span class="brand-tag">Vacuum Total Solution · Edwards 공식대리점</span>
+    <button class="install-btn" id="installAppBtn" onclick="mkInstallApp()" type="button" style="display:none" title="앱으로 설치 — 데스크탑에 독립 창으로 바로가기 생성">
+      <span aria-hidden="true">⊕</span> 앱 설치
+    </button>
     <div class="auth-bar" id="authBar"></div>
   </div>
   <div class="header">
@@ -539,6 +543,37 @@ nXDS15i 2대 + 예비 팁씰 키트 2세트로 구성하였습니다.
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/supabase-client.js?v=2"></script>
+<script>
+  // Service Worker 등록 (PWA 설치 조건)
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", ()=>{
+      navigator.serviceWorker.register("/sw.js").catch(e => console.warn("SW 등록 실패", e));
+    });
+  }
+  // 설치 프롬프트 — 사용자 제스처로 앱 설치 가능하게
+  let MK_INSTALL_PROMPT = null;
+  window.addEventListener("beforeinstallprompt", (e)=>{
+    e.preventDefault();
+    MK_INSTALL_PROMPT = e;
+    const btn = document.getElementById("installAppBtn");
+    if(btn){ btn.style.display = "inline-flex"; }
+  });
+  async function mkInstallApp(){
+    if(!MK_INSTALL_PROMPT){
+      alert("브라우저 주소창 오른쪽의 설치 아이콘(⊕) 또는 메뉴 > 앱 설치를 이용하세요.\n\n※ iOS Safari: 공유 > 홈 화면에 추가");
+      return;
+    }
+    MK_INSTALL_PROMPT.prompt();
+    await MK_INSTALL_PROMPT.userChoice;
+    MK_INSTALL_PROMPT = null;
+    const btn = document.getElementById("installAppBtn");
+    if(btn){ btn.style.display = "none"; }
+  }
+  window.addEventListener("appinstalled", ()=>{
+    const btn = document.getElementById("installAppBtn");
+    if(btn){ btn.style.display = "none"; }
+  });
+</script>
 <script src="js/script.js?v=21"></script>
 <script src="js/product-types.js?v=1"></script>
 <script src="js/extras.js?v=21"></script>

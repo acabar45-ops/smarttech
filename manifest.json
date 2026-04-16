@@ -1,0 +1,32 @@
+{
+  "name": "스마텍 견적서 자동화",
+  "short_name": "스마텍 견적",
+  "description": "AI 에이전트 기반 진공펌프 견적 자동화 시스템 (메일 자동견적, 명함 OCR, 고객 관리)",
+  "lang": "ko-KR",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "background_color": "#FFFFFF",
+  "theme_color": "#051C2C",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "images/icon-192.png",          "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "images/icon-512.png",          "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "images/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "메일 자동견적",
+      "short_name": "메일",
+      "url": "/index.html#email",
+      "description": "고객 메일로 견적 초안 생성"
+    },
+    {
+      "name": "고객 관리",
+      "short_name": "고객",
+      "url": "/index.html#clients"
+    }
+  ]
+}
