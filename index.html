@@ -317,7 +317,55 @@ footer{background:#fff;border-top:1px solid var(--line);padding:56px 24px 40px}
 .blog-header{text-align:center;margin-bottom:56px;padding-bottom:40px;border-bottom:1px solid var(--line)}
 .blog-header h1{font-size:clamp(36px,5vw,56px);letter-spacing:-0.03em;line-height:1.1;margin-bottom:14px}
 .blog-header p{font-size:17px;color:var(--brand-slate);margin:0}
-.post{background:#fff;border:1px solid var(--line);border-radius:16px;padding:40px;margin-bottom:24px;box-shadow:var(--shadow-sm);scroll-margin-top:80px}
+.post{position:relative;background:#fff;border:1px solid var(--line);border-radius:16px;padding:40px;margin-bottom:80px;box-shadow:var(--shadow-sm);scroll-margin-top:80px}
+
+/* 포스트 마지막 요소 아래에 END 라인 자동 삽입 */
+.post::after{
+  content:'';
+  position:absolute;
+  left:40px;right:40px;bottom:-48px;
+  height:2px;
+  background:
+    linear-gradient(90deg,
+      transparent 0%,
+      var(--line) 8%,
+      var(--line) 48%,
+      var(--brand) 48%,
+      var(--brand) 52%,
+      var(--line) 52%,
+      var(--line) 92%,
+      transparent 100%);
+}
+/* 가운데 END OF POST 라벨 (마지막 포스트 제외) */
+.post:not(:last-of-type)::before{
+  content:'END OF POST';
+  position:absolute;
+  left:50%;bottom:-63px;
+  transform:translateX(-50%);
+  background:var(--surface);
+  padding:4px 14px;
+  font-family:var(--font-mono);
+  font-size:10.5px;
+  font-weight:700;
+  letter-spacing:.18em;
+  color:var(--brand);
+  border:1px solid var(--line);
+  border-radius:999px;
+  box-shadow:0 2px 6px rgba(10,46,92,.06);
+  z-index:2;
+  white-space:nowrap;
+}
+/* 마지막 포스트는 END 대신 "ALL POSTS" 표시 */
+.post:last-of-type{margin-bottom:40px}
+.post:last-of-type::after{
+  background:linear-gradient(90deg, transparent, var(--line) 40%, var(--line) 60%, transparent);
+}
+
+@media(max-width:640px){
+  .post{padding:28px 22px;margin-bottom:64px}
+  .post::after{left:22px;right:22px;bottom:-40px}
+  .post:not(:last-of-type)::before{bottom:-52px;font-size:9.5px;padding:3px 10px}
+}
 .post-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;font-size:12.5px}
 .post-num{font-family:var(--font-mono);background:var(--brand);color:#fff;padding:3px 9px;border-radius:5px;letter-spacing:.05em;font-weight:500}
 .post-cat{background:var(--surface-soft);color:var(--brand-deep);padding:3px 9px;border-radius:5px;border:1px solid var(--line)}
@@ -408,15 +456,7 @@ section[id]{scroll-margin-top:calc(var(--nav-h) + 8px)}
 <nav class="nav" aria-label="메인 네비게이션">
   <div class="nav-inner">
     <a class="nav-logo" href="#" onclick="goHome();return false;" aria-label="SMARTECH 홈">
-      <svg width="26" height="26" viewBox="0 0 40 40" aria-hidden="true">
-        <circle cx="20" cy="20" r="18" fill="none" stroke="#1B4B8F" stroke-width="1.8"/>
-        <path d="M13 22 L13 14 L20 14 L20 22 L27 22 L27 30" fill="none" stroke="#1B4B8F" stroke-width="1.8" stroke-linecap="round"/>
-        <circle cx="20" cy="20" r="2.5" fill="#4A90C2"/>
-      </svg>
-      <span>
-        <span class="logo-text">SMARTECH</span>
-        <span class="logo-tag">Vacuum Components &amp; Lines</span>
-      </span>
+      <img src="images/smartech_logo.png" alt="SMARTECH — Vacuum Components & Lines" style="height:46px;width:auto;display:block">
     </a>
     <div class="nav-links">
       <a class="nav-link active" id="nav-home" href="#" onclick="goHome();return false;">홈</a>
@@ -752,8 +792,7 @@ section[id]{scroll-margin-top:calc(var(--nav-h) + 8px)}
 <footer>
   <div class="footer-inner">
     <div class="footer-brand">
-      <div class="logo-text">SMARTECH</div>
-      <div class="logo-tag">Vacuum Components &amp; Lines</div>
+      <img src="images/smartech_logo.png" alt="SMARTECH — Vacuum Components & Lines" style="height:44px;width:auto;display:block;margin-bottom:14px">
       <p>(주)스마텍 · 대표 이명재<br>경기도 수원시 영통구 신원로 55, 907호<br>사업자 진공펌프 판매·수리 전문.</p>
       <div class="footer-edwards" style="margin-top:16px">
         <span class="hero-badge-dot" aria-hidden="true"></span>
@@ -1376,10 +1415,7 @@ section[id]{scroll-margin-top:calc(var(--nav-h) + 8px)}
   /* ── Form ───────────────────────────────────── */
   window.handleFormSubmit = function(e){
     e.preventDefault();
-    alert('문의가 접수되었습니다.
-담당자가 빠르게 연락드리겠습니다.
-
-긴급 수리: 010-3194-7170');
+    alert('문의가 접수되었습니다.\n담당자가 빠르게 연락드리겠습니다.\n\n긴급 수리: 010-3194-7170');
   };
 
   /* ── IntersectionObserver: reveal + stagger ── */
