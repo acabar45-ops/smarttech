@@ -1,0 +1,175 @@
+{
+  "metadata": {
+    "source_image": "KakaoTalk_20260415_224337920.jpg",
+    "source_pdf": "Smartech_Application In Market_2024.pdf",
+    "decoded_by": "Visual Content Decoder agent",
+    "decoded_at": "2026-04-16",
+    "total_domains": 9,
+    "layout_notes": "Clockwise placement from 12 o'clock; 40-degree increments (0,40,80,120,160,200,240,280,320). Center label: 'Vacuum Applications'."
+  },
+  "applications": [
+    {
+      "id": "gas-cylinder",
+      "title_ko": "가스 실린더 & Residual Gas Removal",
+      "title_en": "Gas Cylinder & Residual Gas Removal",
+      "angle": 0,
+      "icon_hint": "gas-cylinder",
+      "bullets": [
+        "충전 전 내부 Purge, 고순도 유지, 안전 확보.",
+        "초보자용: nXDS (스크롤), E2M, nEXT"
+      ],
+      "description_long": "실린더 충전 전 잔류가스 제거로 고순도·안전성을 동시에 확보합니다.",
+      "recommended_products": [
+        {"sku": "nXDS", "label": "nXDS (스크롤)", "prod_card_id": "prod-nxds"},
+        {"sku": "E2M", "label": "E2M", "prod_card_id": "prod-rv"},
+        {"sku": "nEXT", "label": "nEXT", "prod_card_id": "prod-next"}
+      ],
+      "related_blog_post": "#p2"
+    },
+    {
+      "id": "insulated-piping",
+      "title_ko": "진공 이중배관 (Insulated Piping)",
+      "title_en": "Insulated Piping",
+      "angle": 40,
+      "icon_hint": "insulated-pipe",
+      "bullets": [
+        "극저금저온 유체 이송 시 단열, 열손실 최소화.",
+        "초보자용: T-station, nXDS, ELD500 리크디텍터"
+      ],
+      "description_long": "극저온 유체 이송 배관의 진공 단열로 열손실과 결로를 차단합니다.",
+      "recommended_products": [
+        {"sku": "T-station", "label": "T-station", "prod_card_id": "prod-tstation"},
+        {"sku": "nXDS", "label": "nXDS", "prod_card_id": "prod-nxds"},
+        {"sku": "ELD500", "label": "ELD500 리크디텍터", "prod_card_id": null}
+      ],
+      "related_blog_post": "#p7"
+    },
+    {
+      "id": "secondary-battery",
+      "title_ko": "이차전지 (Secondary Battery) 제조",
+      "title_en": "Secondary Battery Manufacturing",
+      "angle": 80,
+      "icon_hint": "battery-cell",
+      "bullets": [
+        "Degassing(탈취), 기포 제거 및 수명 연장.",
+        "GXS160, GXS250/2600, nES, EXS"
+      ],
+      "description_long": "이차전지 Degassing·전해액 함침 공정에서 셀 수명과 수율을 극대화합니다.",
+      "recommended_products": [
+        {"sku": "GXS160", "label": "GXS160", "prod_card_id": "prod-gxs"},
+        {"sku": "GXS250/2600", "label": "GXS250/2600", "prod_card_id": "prod-gxs"},
+        {"sku": "nES", "label": "nES", "prod_card_id": null},
+        {"sku": "EXS", "label": "EXS", "prod_card_id": null}
+      ],
+      "related_blog_post": "#p10"
+    },
+    {
+      "id": "vacuum-furnace",
+      "title_ko": "진공로 (Vacuum Furnace)",
+      "title_en": "Vacuum Furnace",
+      "angle": 120,
+      "icon_hint": "furnace",
+      "bullets": [
+        "금속 열처리/탄화/탈취/소성 공정, 산화 방지.",
+        "GXS 시리즈, EXS, EH"
+      ],
+      "description_long": "금속 열처리·CVD 코팅·탄화 공정에서 고온 챔버의 산화를 원천 차단합니다.",
+      "recommended_products": [
+        {"sku": "GXS 시리즈", "label": "GXS 시리즈", "prod_card_id": "prod-gxs"},
+        {"sku": "EXS", "label": "EXS", "prod_card_id": null},
+        {"sku": "EH", "label": "EH", "prod_card_id": "prod-eh"}
+      ],
+      "related_blog_post": "#p4"
+    },
+    {
+      "id": "vacuum-oven",
+      "title_ko": "진공 오븐 및 건조 (Vacuum Oven & Drying)",
+      "title_en": "Vacuum Oven & Drying",
+      "angle": 160,
+      "icon_hint": "oven",
+      "bullets": [
+        "반도체 부품/화장품 원료/화학 제품 저온 건조, 제품 변형 방지.",
+        "nXDS, GXS"
+      ],
+      "description_long": "저온·저압 건조로 열 민감 소재의 형상과 품질을 안정적으로 보존합니다.",
+      "recommended_products": [
+        {"sku": "nXDS", "label": "nXDS", "prod_card_id": "prod-nxds"},
+        {"sku": "GXS", "label": "GXS", "prod_card_id": "prod-gxs"}
+      ],
+      "related_blog_post": "#p9"
+    },
+    {
+      "id": "oled-display",
+      "title_ko": "OLED 및 디스플레이 공정",
+      "title_en": "OLED & Display Process",
+      "angle": 200,
+      "icon_hint": "oled-display",
+      "bullets": [
+        "OLED 유기물 증착 및 봉지 공정 먼지/산소 차단 청정 진공.",
+        "GXS/EXS, iXH"
+      ],
+      "description_long": "OLED 유기물 증착·Encapsulation 공정에서 초청정 진공 환경을 유지합니다.",
+      "recommended_products": [
+        {"sku": "GXS", "label": "GXS", "prod_card_id": "prod-gxs"},
+        {"sku": "EXS", "label": "EXS", "prod_card_id": null},
+        {"sku": "iXH", "label": "iXH", "prod_card_id": null}
+      ],
+      "related_blog_post": "#p10"
+    },
+    {
+      "id": "freeze-dry",
+      "title_ko": "식품 및 제약 동결건조",
+      "title_en": "Food & Pharma Freeze-Drying",
+      "angle": 240,
+      "icon_hint": "freeze-dry",
+      "bullets": [
+        "의약품 원료/유산균/식품 동결건조 영양소 파괴 없이 장기 보존.",
+        "EM 시리즈, GXS/EXS"
+      ],
+      "description_long": "동결건조 공정에서 영양소·활성물질 손상 없이 장기 보존성을 확보합니다.",
+      "recommended_products": [
+        {"sku": "EM 시리즈", "label": "EM 시리즈", "prod_card_id": "prod-rv"},
+        {"sku": "GXS", "label": "GXS", "prod_card_id": "prod-gxs"},
+        {"sku": "EXS", "label": "EXS", "prod_card_id": null}
+      ],
+      "related_blog_post": "#p9"
+    },
+    {
+      "id": "coating-smartphone",
+      "title_ko": "코팅 및 스마트폰 공정",
+      "title_en": "Coating & Smartphone Process",
+      "angle": 280,
+      "icon_hint": "smartphone",
+      "bullets": [
+        "스퍼터링, AR/AF 핸드폰 액정 코팅 렌즈 코팅, 내구성 향상.",
+        "nES, EXS/GXS, STP Turbo"
+      ],
+      "description_long": "AR/AF 스퍼터링 코팅으로 디스플레이 내구성과 광학 품질을 높입니다.",
+      "recommended_products": [
+        {"sku": "nES", "label": "nES", "prod_card_id": null},
+        {"sku": "EXS", "label": "EXS", "prod_card_id": null},
+        {"sku": "GXS", "label": "GXS", "prod_card_id": "prod-gxs"},
+        {"sku": "STP Turbo", "label": "STP Turbo", "prod_card_id": "prod-next"}
+      ],
+      "related_blog_post": "#p10"
+    },
+    {
+      "id": "research-analysis",
+      "title_ko": "연구 및 분석 (Research & Analysis)",
+      "title_en": "Research & Analysis",
+      "angle": 320,
+      "icon_hint": "microscope",
+      "bullets": [
+        "전자현미경(SEM/TEM) 관찰 질량 분석 장비(GC/LC-MS) 분석 정밀 측정 환경 확보.",
+        "nXRi, nXDS, nEXT"
+      ],
+      "description_long": "SEM·TEM·질량분석기에 초고진공을 공급해 재현성 있는 측정 결과를 보장합니다.",
+      "recommended_products": [
+        {"sku": "nXRi", "label": "nXRi", "prod_card_id": null},
+        {"sku": "nXDS", "label": "nXDS", "prod_card_id": "prod-nxds"},
+        {"sku": "nEXT", "label": "nEXT", "prod_card_id": "prod-next"}
+      ],
+      "related_blog_post": "#p6"
+    }
+  ]
+}

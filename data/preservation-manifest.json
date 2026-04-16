@@ -1,0 +1,448 @@
+{
+  "generated_at": "2026-04-16",
+  "source_file": "index.html",
+  "source_lines": 1498,
+  "audit_note": "Task prompt said 1447 lines; actual line count is 1498. Manifest reflects actual file.",
+  "auditor": "Preservation Auditor (Wave 1)",
+
+  "ids": {
+    "page-home": { "line": 493, "purpose": "SPA home container — toggled via goHome()" },
+    "page-blog": { "line": 832, "purpose": "SPA blog container — toggled via goBlog()" },
+    "products": { "line": 519, "purpose": "Products section scroll target; Applications section will be inserted AFTER this and BEFORE #services" },
+    "services": { "line": 664, "purpose": "Services section scroll target — new Applications section goes BEFORE this" },
+    "faq": { "line": 725, "purpose": "FAQ section scroll target" },
+    "contact": { "line": 743, "purpose": "Contact section scroll target" },
+    "nav-home": { "line": 462, "purpose": "Home nav link — .active toggled by goHome/goBlog" },
+    "nav-blog": { "line": 465, "purpose": "Blog nav link — .active toggled by goHome/goBlog" },
+    "mMenu": { "line": 478, "purpose": "Mobile menu overlay — toggled by toggleMenu()" },
+    "mobileCta": { "line": 1358, "purpose": "Mobile sticky CTA — .on class toggled on scroll > 520px" },
+    "f-name": { "line": 772, "purpose": "Contact form: name input" },
+    "f-tel": { "line": 773, "purpose": "Contact form: phone input" },
+    "f-company": { "line": 776, "purpose": "Contact form: company input" },
+    "f-email": { "line": 777, "purpose": "Contact form: email input" },
+    "f-type": { "line": 780, "purpose": "Contact form: inquiry type select" },
+    "f-model": { "line": 781, "purpose": "Contact form: product model input" },
+    "f-msg": { "line": 783, "purpose": "Contact form: message textarea" },
+    "p1": { "line": 849, "purpose": "Blog post 1 — deep-link target #p1" },
+    "p2": { "line": 898, "purpose": "Blog post 2 — deep-link target #p2" },
+    "p3": { "line": 942, "purpose": "Blog post 3 — deep-link target #p3" },
+    "p4": { "line": 983, "purpose": "Blog post 4 — deep-link target #p4" },
+    "p5": { "line": 1024, "purpose": "Blog post 5 — deep-link target #p5" },
+    "p6": { "line": 1068, "purpose": "Blog post 6 — deep-link target #p6" },
+    "p7": { "line": 1119, "purpose": "Blog post 7 — deep-link target #p7" },
+    "p8": { "line": 1173, "purpose": "Blog post 8 — deep-link target #p8" },
+    "p9": { "line": 1223, "purpose": "Blog post 9 — deep-link target #p9" },
+    "p10": { "line": 1274, "purpose": "Blog post 10 — deep-link target #p10" }
+  },
+  "ids_verified_count": 27,
+  "blog_post_ids_verified": "p1 through p10 all present",
+
+  "classes_used_by_js": [
+    { "class": "page", "used_by": "SPA router (goHome/goBlog) via .page.active toggle", "must_not_rename": true },
+    { "class": "active", "used_by": "SPA router + nav link state (line 1386-1397)", "must_not_rename": true, "note": "Used on .page, .nav-link, contexts — generic class, keep semantics" },
+    { "class": "reveal", "used_by": "IntersectionObserver at line 1422-1430 (threshold:0.12, rootMargin:'0px 0px -40px 0px')", "must_not_rename": true, "note": "Applied to #products, #services, #faq, #contact, .process — new Applications section SHOULD also have .reveal" },
+    { "class": "stagger", "used_by": "Same IntersectionObserver at line 1431 (threshold:0.12)", "must_not_rename": true, "note": "Applied to .prod-grid, .grid-2, .faq-list. Adds sequential transition-delay via CSS nth-child" },
+    { "class": "in", "used_by": "Added by IntersectionObserver when intersecting (line 1425) — triggers .reveal→.reveal.in and .stagger.in > * animations", "must_not_rename": true },
+    { "class": "post", "used_by": "Blog sidenav scroll-spy IntersectionObserver at line 1467-1478 (rootMargin:'-40% 0px -50% 0px')", "must_not_rename": true },
+    { "class": "bsn-item", "used_by": "Blog sidenav links — .on toggled by scroll-spy (line 1468, 1474)", "must_not_rename": true },
+    { "class": "on", "used_by": ".mobile-cta.on (sticky CTA reveal), .m-menu.on (mobile menu), .bsn-item.on (scroll-spy)", "must_not_rename": true }
+  ],
+  "data_attributes_used_by_js": [
+    { "attr": "data-count", "used_by": "Counter animation IntersectionObserver at line 1434-1452 (threshold:0.4)", "locations": "hero stat spans at lines 511, 512", "values_seen": ["498", "15"] }
+  ],
+
+  "js_functions": [
+    {
+      "name": "goHome",
+      "line": 1385,
+      "signature": "window.goHome = function(){ ... }",
+      "behavior": "Adds .active to #page-home, removes from #page-blog; sets nav-home.active; scrolls to top unless window.__skipScroll flag is set",
+      "called_from": ["nav-logo onclick (line 458)", "nav-home onclick (line 462)", "제품/수리/FAQ/문의 nav links (463,464,466,467)", "btn 견적 문의 (472)", "all m-link mobile items (481-486,488)", "blog back button (834)", "footer links (811-813, 818-820)"]
+    },
+    {
+      "name": "goBlog",
+      "line": 1393,
+      "signature": "window.goBlog = function(){ ... }",
+      "behavior": "Adds .active to #page-blog, removes from #page-home; sets nav-blog.active; scrolls to top (with try/catch fallback)",
+      "called_from": ["nav-blog onclick (line 465)", "m-link 기술 블로그 (484)", "footer 기술 블로그 (819)", "all 10 bsn-item links (1334-1343)", "deep-link handler on load (line 1482)"]
+    },
+    {
+      "name": "goSection",
+      "line": 1400,
+      "signature": "window.goSection = function(id){ ... }",
+      "behavior": "Sets __skipScroll=true, switches to home if not active, uses double rAF + 50ms setTimeout, then el.scrollIntoView({behavior:'smooth', block:'start'})",
+      "expected_ids": ["products", "services", "faq", "contact"],
+      "new_applications_id_note": "If the new Applications section uses #applications, it MUST be reachable via goSection('applications') — the function works with ANY element ID, so no code change needed, but nav links must pass the exact ID string",
+      "called_from": ["desktop nav links (463,464,466,467)", "btn 견적 문의 (472)", "hero CTAs (505,508)", "mobile links (482,483,485,486,488)", "prod-cta anchors on each product card (538,552,566,580,594,608,622,636,650)", "urgent CTA (719)", "footer nav links (811-813,818,820)", "mobile c-quote (1363)"]
+    },
+    {
+      "name": "toggleMenu",
+      "line": 1413,
+      "signature": "window.toggleMenu = function(){ mMenu.classList.toggle('on'); }",
+      "called_from": ["nav-hamburger button (473)", "m-menu backdrop click-outside (478)", "every m-link (481-486,488)", "m-cta button (488)"]
+    },
+    {
+      "name": "handleFormSubmit",
+      "line": 1416,
+      "signature": "window.handleFormSubmit = function(e){ e.preventDefault(); alert(...); }",
+      "called_from": ["form onsubmit (line 770)"],
+      "current_implementation": "Stub — prevents default, shows Korean alert with emergency phone 010-3194-7170"
+    }
+  ],
+
+  "intersection_observers": [
+    { "purpose": "reveal + stagger motion", "line": 1422, "threshold": 0.12, "rootMargin": "0px 0px -40px 0px", "observes": ".reveal, .stagger", "action": "adds .in class, unobserves after trigger" },
+    { "purpose": "hero counter animation", "line": 1434, "threshold": 0.4, "observes": "[data-count]", "action": "eases from 0 to target using cubic ease-out over 1400ms" },
+    { "purpose": "blog sidenav scroll-spy", "line": 1470, "threshold": 0, "rootMargin": "-40% 0px -50% 0px", "observes": ".post (all 10 blog articles)", "action": "toggles .bsn-item.on by matching href to #id" }
+  ],
+
+  "service_worker": {
+    "registered_at_line": 1492,
+    "path": "sw.js",
+    "registration_gate": "if('serviceWorker' in navigator) on window load",
+    "error_handling": ".catch(()=>{}) — silently ignores registration failures"
+  },
+
+  "external_assets": [
+    { "type": "manifest", "path": "manifest.json", "line": 19 },
+    { "type": "icon", "path": "images/icon-192.png", "line": 20 },
+    { "type": "apple-touch-icon", "path": "images/icon-192.png", "line": 21 },
+    { "type": "font-preconnect", "url": "https://fonts.googleapis.com", "line": 48 },
+    { "type": "font-preconnect", "url": "https://fonts.gstatic.com", "line": 49 },
+    { "type": "cdn-preconnect", "url": "https://cdn.jsdelivr.net", "line": 50 },
+    { "type": "font-stylesheet", "url": "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css", "line": 51 },
+    { "type": "font-stylesheet", "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap", "line": 52 },
+    { "type": "image-logo", "path": "images/smartech_logo.png", "line": 459, "context": "nav-logo", "height": "46px" },
+    { "type": "image-logo", "path": "images/smartech_logo.png", "line": 795, "context": "footer", "height": "44px" },
+    { "type": "edwards-cdn", "url": "https://www.edwardsvacuum.com/content/dam/brands/edwards-vacuum/general-vacuum/equipment/pumps/dry-scroll-pumps/nxdsi-scroll/NXDS20i.tif/jcr:content/renditions/cq5dam.web.1200.628.jpeg", "line": 531, "product": "nXDS" },
+    { "type": "edwards-cdn", "url": "https://www.edwardsvacuum.com/content/dam/brands/edwards-vacuum/general-vacuum/equipment/pumps/oil-rv-pumps-2-stage/rv-pumps/RV_Side_Flash.tif/jcr:content/renditions/cq5dam.web.1200.628.jpeg", "line": 545, "product": "RV" },
+    { "type": "edwards-cdn", "url": "https://www.edwardsvacuum.com/content/dam/brands/edwards-vacuum/general-vacuum/equipment/pumps/dry-screw-pumps/gxs-dry-screw/GXSDryPumpRange01.jpg/jcr:content/renditions/cq5dam.web.1200.628.jpeg", "line": 559, "product": "GXS" },
+    { "type": "edwards-cdn", "url": "https://www.edwardsvacuum.com/content/dam/brands/edwards-vacuum/general-vacuum/equipment/pumps/turbomolecular-pumps/next-pumps/next-family-and-details/nEXT%20Family%20Photo.png/jcr:content/renditions/cq5dam.web.1200.628.png", "line": 573, "product": "nEXT" },
+    { "type": "edwards-cdn", "url": "https://www.edwardsvacuum.com/content/dam/brands/edwards-vacuum/general-vacuum/equipment/pumps/dry-screw-pumps/eds-dry-screw/eds-200_300/EDS_300_Industrial%20(3).jpg/jcr:content/renditions/cq5dam.web.1200.628.jpeg", "line": 587, "product": "EDS" },
+    { "type": "edwards-cdn", "url": "https://www.edwardsvacuum.com/content/dam/brands/edwards-vacuum/general-vacuum/equipment/pumps/mechanical-booster-pumps/eh-mechanical-boosters/Mechanical-booster-pump-reference-image.jpg/jcr:content/renditions/cq5dam.web.1200.628.jpeg", "line": 601, "product": "EH Roots Booster" },
+    { "type": "edwards-cdn", "url": "https://www.edwardsvacuum.com/content/dam/brands/edwards-vacuum/general-vacuum/equipment/measurement-control/gauge-direct-pressure-measurement/Barocel-Group.png/jcr:content/renditions/cq5dam.web.1200.628.png", "line": 615, "product": "Gauge & Control (Barocel)" },
+    { "type": "edwards-cdn", "url": "https://www.edwardsvacuum.com/content/dam/brands/edwards-vacuum/general-vacuum/equipment/pumps/high-vacuum-pump-systems/next-t-station/T-Station300-E2M1.5-Left-angle.tif/jcr:content/renditions/cq5dam.web.1200.628.jpeg", "line": 629, "product": "T-Station" },
+    { "type": "edwards-cdn", "url": "https://www.edwardsvacuum.com/content/dam/brands/edwards-vacuum/general-vacuum/equipment/measurement-control/vacuum-system-controllers/adc-series/ADC_Active%20Digital%20Controller.png/jcr:content/renditions/cq5dam.web.1200.628.png", "line": 643, "product": "Consumables (ADC controller image)" },
+    { "type": "internal-link", "path": "quote.html", "lines": [468, 487, 657, 814], "purpose": "견적 시스템" },
+    { "type": "external-link", "url": "https://www.edwardsvacuum.com", "line": 821, "purpose": "Footer Edwards HQ link, target=_blank" },
+    { "type": "script", "path": "sw.js", "line": 1492, "context": "serviceWorker.register" }
+  ],
+  "edwards_cdn_product_images_count": 9,
+
+  "verbatim_content": {
+    "company": {
+      "name_ko": "(주)스마텍",
+      "name_en": "SMARTECH",
+      "founder": "이명재",
+      "address": "경기도 수원시 영통구 신원로 55, 907호",
+      "street": "신원로 55, 907호",
+      "locality": "수원시 영통구",
+      "region": "경기도",
+      "country": "KR",
+      "tel": "031-204-7170",
+      "fax": "031-206-7178",
+      "mobile_emergency": "010-3194-7170",
+      "email": "rokmclmj@gmail.com",
+      "website": "https://www.smartechvacuum.com",
+      "hours": "Mo-Fr 09:00-18:00",
+      "tagline": "Edwards Korea Authorized Distributor",
+      "footer_line": "(주)스마텍 · 대표 이명재 / 경기도 수원시 영통구 신원로 55, 907호 / 사업자 진공펌프 판매·수리 전문.",
+      "copyright": "© 2026 (주)스마텍 SMARTECH. All rights reserved. · smartechvacuum.com"
+    },
+    "meta_tags": {
+      "title": "SMARTECH | Edwards 공식 대리점 · 진공 토탈 솔루션",
+      "description": "스마텍(SMARTECH)은 Edwards Korea 공식 인증 대리점으로 Edwards 진공펌프 판매·수리·예방정비 서비스를 제공합니다. nXDS·RV·GXS·nEXT 전 라인업 취급, 수도권 당일 출장, 15년 경력 기술진. 경기도 소재.",
+      "keywords": "Edwards 진공펌프,에드워즈 진공펌프,Edwards 공식 대리점,진공펌프 수리,nXDS 펌프,RV 펌프,GXS 펌프,진공펌프 오버홀,Edwards Korea,스마텍,SMARTECH,경기도 진공펌프,반도체 진공펌프,진공펌프 PM,Edwards 부품",
+      "author": "SMARTECH",
+      "theme-color": "#1B4B8F",
+      "canonical": "https://www.smartechvacuum.com/",
+      "og:type": "website",
+      "og:title": "SMARTECH | Edwards 공식 인증 대리점 · 진공펌프 전문",
+      "og:description": "Edwards Korea 공식 인증 대리점. nXDS·RV·GXS 진공펌프 판매·수리·예방정비. 수도권 당일 출장, 15년 경력 기술진. 031-204-7170",
+      "og:url": "https://www.smartechvacuum.com/",
+      "og:site_name": "SMARTECH",
+      "og:locale": "ko_KR"
+    },
+    "jsonld_schema": {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": "스마텍 (SMARTECH)",
+      "description": "Edwards Korea 공식 인증 대리점. 진공펌프 판매·수리·예방정비 전문.",
+      "line_range": [25, 46],
+      "must_preserve": true
+    },
+    "product_part_numbers": [
+      { "index": 1, "badge": "DRY SCROLL", "series": "Edwards · Dry Scroll", "product": "nXDS6i ~ nXDS20i", "part_range": "A73501983 ~ A73801983", "desc": "6~20 m³/h · 무오일 · 52dB(A) · 5년 인터벌 · i/iC/iR", "line": 535 },
+      { "index": 2, "badge": "ROTARY VANE", "series": "Edwards · Rotary Vane", "product": "RV3 / RV5 / RV8 / RV12", "part_range": "A65201903 ~ A65529925", "desc": "2단 로터리 베인 · 1Ph/3Ph · IE2 인증 · FX 화학용 포함", "line": 549 },
+      { "index": 3, "badge": "INDUSTRIAL DRY", "series": "Edwards · Industrial Dry Screw", "product": "GXS160F ~ GXS750/4200F", "part_range": "GS2150350000 ~ GSP152350000", "desc": "반도체·화학 공정 · HV/LV · Booster 일체형 · 5년 유지보수", "line": 563 },
+      { "index": 4, "badge": "TURBOMOLECULAR", "series": "Edwards · Turbomolecular", "product": "nEXT85D/H ~ nEXT400D", "part_range": "B8G210101 ~ B83200400", "desc": "ISO100/160 · CF100/160 · 80~160W · Profibus/RS485", "line": 577 },
+      { "index": 5, "badge": "DRY SCREW SYSTEM", "series": "Edwards · Dry Screw System", "product": "EDS200 / EDS300 / EDS480", "part_range": "A41821945 ~ A41840957", "desc": "Air Blast / DC 쿨링 · EU/US/Asia/Canada 전압 · 화학공정 최적", "line": 591 },
+      { "index": 6, "badge": "ROOTS BOOSTER", "series": "Edwards · Roots Booster", "product": "EH250 ~ EH4200", "part_range": "A30105934 ~ A30905934", "desc": "250~4200 m³/h · HC IE3 · ASIA 50Hz · E2M/GV 조합 최적", "line": 605 },
+      { "index": 7, "badge": "GAUGE & CONTROL", "series": "Edwards · Measurement", "product": "Barocel · WRG · APG · TIC", "part_range": "W601111110 ~ D39722000", "desc": "캐패시턴스·피라니·이온·WRG게이지 · TIC/ADC 컨트롤러", "line": 619 },
+      { "index": 8, "badge": "T-STATION", "series": "Edwards · Turbo Pumping Station", "product": "T-Station 85H / 300D", "part_range": "TS85D1001 ~ TSD731001", "desc": "터보+러프 일체형 · Dry/Wet · ISO/CF · 30+ 구성 조합", "line": 633 },
+      { "index": 9, "badge": "CONSUMABLES", "series": "Edwards · Genuine Consumables", "product": "오일 · 그리스 · O링 · 필터", "part_range": "H11026015 ~ H02124037", "desc": "Ultragrade · Fomblin · Apiezon · 정품 O링·필터 전품목", "line": 647 }
+    ],
+    "products_footer_cta": "전체 제품 498개 · 견적 시스템 보기",
+    "blog_posts": [
+      { "id": "p1", "num": "POST 01", "category": "HOW-TO 가이드", "date": "2026.04.16", "is_fresh": true, "title": "Edwards 진공펌프 오일 교체 완전 가이드 — RV·E2M 펌프 오일 선택부터 교체 주기까지", "snippet": "Edwards RV·E2M 진공펌프의 오일 교체 주기는 일반 환경에서 2,000~3,000운전시간 또는 6개월이며, 반드시 Edwards 정품 Ultragrade 오일을 사용해야 합니다. 잘못된 오일은 씰 손상과 진공도 저하를 일으키고 보증을 무효화합니다.", "line_range": [849, 895] },
+      { "id": "p2", "num": "POST 02", "category": "비교 가이드", "date": "2026.04.13", "is_fresh": false, "title": "Edwards nXDS vs RV 진공펌프 — 어떤 펌프를 선택해야 할까? 용도별 완전 비교", "snippet": "Edwards nXDS는 무오일 드라이 스크롤 방식으로 반도체·연구소·클린 공정에 적합하며, RV는 오일씰 로터리 베인 방식으로 범용 러프 진공에 사용됩니다. nXDS는 5년 서비스 인터벌로 장기 TCO가 낮고, RV는 초기 비용이 낮아 예산이 제한된 환경에 적합합니다.", "line_range": [898, 939] },
+      { "id": "p3", "num": "POST 03", "category": "트러블슈팅", "date": "2026.04.09", "is_fresh": false, "title": "진공펌프 고장 원인 TOP 5 — 증상별 자가 진단과 전문가 수리 기준", "snippet": "진공펌프 고장의 5대 원인은 ①오일 오염·부족, ②팁씰·베인 마모, ③오일 미스트 필터 막힘, ④냉각 불량, ⑤수분 응축입니다. 소음 증가·진공도 저하·과열·오일 유화 증상이 나타나면 해당 원인부터 점검하세요.", "line_range": [942, 980] },
+      { "id": "p4", "num": "POST 04", "category": "제품 심층 해설", "date": "2026.04.06", "is_fresh": false, "title": "Edwards GXS 드라이 스크류 펌프 완전 해설 — 반도체·화학 공정을 위한 산업용 진공 솔루션", "snippet": "Edwards GXS는 반도체·화학·제약 공정용 산업 드라이 스크류 진공펌프로 GXS160F~GXS750/4200F까지 라인업이 있으며, 최대 5년 무보수 운전과 부스터 일체형 구성이 가능합니다. 오일이 없는 비접촉 씰 구조로 공정 오염 없이 높은 펌핑 속도를 제공합니다.", "line_range": [983, 1021] },
+      { "id": "p5", "num": "POST 05", "category": "비용 절감 전략", "date": "2026.04.02", "is_fresh": false, "title": "진공펌프 PM 계약이 수리비를 줄이는 이유 — 예방적 유지보수 vs 사후 수리 비용 비교", "snippet": "진공펌프 예방적 유지보수(PM)를 받으면 사후 수리 대비 5년 총소유비용이 평균 40~60% 낮습니다. 갑작스러운 고장은 긴급 수리 비용이 정상 수리의 2~3배이며, 생산 중단으로 인한 간접 손실까지 발생하기 때문입니다.", "line_range": [1024, 1065] },
+      { "id": "p6", "num": "POST 06", "category": "제품 심층 해설", "date": "2026.03.29", "is_fresh": false, "title": "Edwards 터보분자펌프 nEXT 완전 가이드 — 백킹 펌프 매칭부터 베어링 수명까지", "snippet": "Edwards nEXT 터보분자펌프는 10⁻⁹ mbar 까지 도달하는 고진공 펌프이며 반드시 백킹 펌프(드라이 또는 오일씰)와 조합해 사용합니다. 백킹 펌프는 nXDS 6~15 m³/h급이 표준이며, 분석기기·반도체·연구용으로 5년 베어링 수명을 보장합니다.", "line_range": [1068, 1116] },
+      { "id": "p7", "num": "POST 07", "category": "트러블슈팅", "date": "2026.03.26", "is_fresh": false, "title": "진공 리크(누설) 검출 완전 가이드 — 헬륨 리크 디텍터 사용법과 누설점 찾기 7단계", "snippet": "진공 리크 검출은 헬륨을 추적가스로 챔버 외부에 분사하고, 챔버 내부의 헬륨 리크 디텍터(질량분석형)가 헬륨을 검출하는 방식입니다. 검출 한계는 10⁻¹² mbar·L/s 수준이며 플랜지·O링·용접부 순으로 우선 점검합니다.", "line_range": [1119, 1170] },
+      { "id": "p8", "num": "POST 08", "category": "비교 가이드", "date": "2026.03.22", "is_fresh": false, "title": "진공게이지 선택 가이드 — Pirani vs Penning vs Capacitance 측정 범위·정확도 비교", "snippet": "진공게이지는 측정 범위에 따라 Pirani(대기~10⁻⁴ mbar), Penning(10⁻²~10⁻⁹ mbar), Capacitance Diaphragm(가스 종류 무관 절대압) 으로 구분됩니다. 일반 진공 시스템은 Pirani + Penning(또는 통합형 ATMION) 조합이 표준이며, 공정 압력 정확 제어가 필요한 경우 CDG가 필수입니다.", "line_range": [1173, 1220] },
+      { "id": "p9", "num": "POST 09", "category": "HOW-TO 가이드", "date": "2026.03.19", "is_fresh": false, "title": "동결건조기·진공오븐 진공 시스템 설계 — 공정별 펌프 조합 추천과 챔버 부피별 사이징", "snippet": "동결건조기는 수분 증기 부하가 크므로 가스 밸러스트가 가능한 RV·E2M 또는 GXS 드라이 펌프가 적합하며, 진공오븐은 일반적으로 nXDS 6~10 m³/h급 무오일 펌프 한 대로 충분합니다. 공정 진공도는 동결건조 0.1~1 mbar, 진공오븐 1~10 mbar 가 표준입니다.", "line_range": [1223, 1271] },
+      { "id": "p10", "num": "POST 10", "category": "제품 심층 해설", "date": "2026.03.15", "is_fresh": false, "title": "반도체 공정용 Edwards iXH 드라이펌프 — 분말·반응성 가스 환경 운영 노하우", "snippet": "Edwards iXH 시리즈는 반도체 CVD·에칭·이온주입 공정용 드라이 펌프로 분말·반응성 가스·고온 부산물을 처리할 수 있도록 설계되었습니다. iXH4520·iXH6065·iXH6070 등의 라인업이 있으며 N₂ 퍼지·핫존 가열·세정 기능으로 분말 응착을 방지합니다.", "line_range": [1274, 1326] }
+    ],
+    "blog_sidenav_items": [
+      { "num": "01", "date": "04.16", "title": "오일 교체 완전 가이드", "href": "#p1", "line": 1334 },
+      { "num": "02", "date": "04.13", "title": "nXDS vs RV 선택", "href": "#p2", "line": 1335 },
+      { "num": "03", "date": "04.09", "title": "고장 원인 TOP 5", "href": "#p3", "line": 1336 },
+      { "num": "04", "date": "04.06", "title": "GXS 드라이 스크류 해설", "href": "#p4", "line": 1337 },
+      { "num": "05", "date": "04.02", "title": "PM 계약 비용 절감", "href": "#p5", "line": 1338 },
+      { "num": "06", "date": "03.29", "title": "nEXT 터보분자펌프", "href": "#p6", "line": 1339 },
+      { "num": "07", "date": "03.26", "title": "헬륨 리크 검출", "href": "#p7", "line": 1340 },
+      { "num": "08", "date": "03.22", "title": "진공게이지 선택 가이드", "href": "#p8", "line": 1341 },
+      { "num": "09", "date": "03.19", "title": "동결건조·진공오븐 설계", "href": "#p9", "line": 1342 },
+      { "num": "10", "date": "03.15", "title": "iXH 반도체 드라이펌프", "href": "#p10", "line": 1343 }
+    ],
+    "faq_questions": [
+      { "q_num": "Q1", "question": "Edwards 진공펌프 공식 대리점인가요?", "answer": "네. 스마텍(SMARTECH)은 Edwards Korea 공식 인증 대리점입니다. Edwards·Atlas Copco Group의 공인 마크 하에 nXDS·RV·GXS·EDS·nEXT 전 라인업을 공급하며, 정품 보증과 공인 기술진 수리 서비스를 제공합니다.", "line": 733 },
+      { "q_num": "Q2", "question": "수리 납기는 얼마나 걸리나요?", "answer": "일반 수리는 분해 견적 후 승인 시 3~5일이 소요됩니다. 생산 라인 긴급 상황이라면 당일 출장 진단 및 백업 펌프 투입이 가능합니다. 긴급 문의: 010-3194-7170.", "line": 734 },
+      { "q_num": "Q3", "question": "nXDS와 RV 펌프, 어떤 것을 선택해야 하나요?", "answer": "오일 오염이 허용되지 않는 클린 공정(반도체·분석기기·터보펌프 포어라인)에는 nXDS, 일반 러프 진공이나 초기 비용이 중요한 경우에는 RV가 적합합니다. 공정 조건을 알려주시면 무료로 모델 선정을 도와드립니다.", "line": 735 },
+      { "q_num": "Q4", "question": "수리 비용은 어떻게 산정되나요?", "answer": "분해 진단 후 실제 필요한 부품·공수를 기반으로 투명하게 견적을 제공합니다. 견적 승인 후에만 수리를 진행하며, 수리 완료 후 12개월 보증을 제공합니다. 수리 불가 판정 시 진단비만 청구됩니다.", "line": 736 },
+      { "q_num": "Q5", "question": "오일과 소모품도 구매할 수 있나요?", "answer": "Edwards 정품 Ultragrade 오일(15·19·20·EXTEND), Fomblin, 팁씰·필터·O링·배기밸브 등 소모품 전 라인업을 재고 보유 중입니다. 파트번호를 모르셔도 모델명만 알려주시면 즉시 확인해드립니다.", "line": 737 },
+      { "q_num": "Q6", "question": "GXS 반도체 드라이 펌프도 취급하나요?", "answer": "네. GXS160F~GXS750/4200F 전 라인업과 EDS·EXS 시리즈 산업용 드라이 스크류 펌프를 공급합니다. 반도체·FPD·태양광·화학 공정에 맞는 구성 선정을 도와드립니다.", "line": 738 }
+    ],
+    "hero_content": {
+      "badge": "Edwards Korea · 공식 인증 대리점",
+      "h1_line1": "Edwards 진공펌프의",
+      "h1_line2_gradient": "신뢰할 수 있는 파트너",
+      "lede": "반도체·디스플레이·제약·연구소 공정을 위한 진공 솔루션. 15년 경력 기술진과 수도권 당일 출장 서비스.",
+      "cta_primary": "견적 문의하기",
+      "cta_secondary": "제품 카탈로그 보기",
+      "stats": [
+        { "n_data_count": "498", "suffix": "+", "label": "취급 파트번호" },
+        { "n_data_count": "15", "suffix": "+", "label": "년 경력" },
+        { "n_text": "공식", "label": "Edwards Authorized" },
+        { "n_text": "당일", "label": "긴급 대응" }
+      ]
+    },
+    "services_content": {
+      "eyebrow": "Services",
+      "h2": "수리 · 정비 · 예방관리",
+      "lede": "Edwards 공인 기술진이 수행하는 7단계 수리 프로세스와 24시간 긴급 대응 — 펌프 수명을 최대화합니다.",
+      "cards_4": ["오버홀 · 정밀 수리", "PM · 예방적 유지보수", "정품 부품 · 오일 공급", "백업 펌프 대여"],
+      "process_7_steps": ["진단", "견적", "분해", "세정", "부품 교체", "조립", "시험"],
+      "urgent_title": "펌프가 멈췄나요? 지금 바로 연락하세요",
+      "urgent_sub": "수도권 당일 출장 · 백업 펌프 즉시 투입 · 생산 중단 최소화"
+    },
+    "contact_content": {
+      "h2": "견적 문의 · 수리 의뢰",
+      "channels": [
+        { "label": "전화 문의", "main": "031-204-7170", "sub": "평일 09:00~18:00" },
+        { "label": "카카오톡 상담", "main": "010-3194-7170", "sub": "문자 → 카카오 연결" },
+        { "label": "24시간 긴급", "main": "010-3194-7170", "sub": "생산 중단 즉시 대응" }
+      ],
+      "form_select_options": ["신품 구매 견적", "수리·오버홀 의뢰", "예비부품·소모품", "PM 정기 계약", "긴급 수리 (당일)", "기술 문의"],
+      "kakao_alert_text": "카카오톡: @스마텍 — 010-3194-7170으로 문자 주시면 카카오로 연결해드립니다."
+    },
+    "products_header": {
+      "eyebrow": "Products",
+      "h2": "Edwards 진공펌프 전 라인업",
+      "lede": "드라이 스크롤부터 터보분자펌프까지 — 공정에 필요한 모든 진공 기술을 한 곳에서 공급합니다."
+    }
+  },
+
+  "css_tokens": {
+    "--brand": "#1B4B8F",
+    "--brand-deep": "#0A2E5C",
+    "--brand-mid": "#4A90C2",
+    "--brand-light": "#7EB5E0",
+    "--brand-glow": "#B8D8F0",
+    "--brand-slate": "#425466",
+    "--surface": "#FCFDFE",
+    "--surface-soft": "#F4F8FC",
+    "--line": "#E3ECF5",
+    "--ink": "#0F1F3A",
+    "--ink-soft": "#2A3F5F",
+    "--muted": "#6B7B91",
+    "--font-body": "'Inter','Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif",
+    "--font-mono": "'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace",
+    "--shadow-sm": "0 1px 2px rgba(10,46,92,.04)",
+    "--shadow-md": "0 1px 2px rgba(10,46,92,.04), 0 12px 32px rgba(10,46,92,.06)",
+    "--shadow-lg": "0 2px 6px rgba(10,46,92,.06), 0 24px 48px rgba(10,46,92,.10)",
+    "--ease": "cubic-bezier(.22,1,.36,1)",
+    "--nav-h": "64px",
+    "_line_range": [58, 81],
+    "_preservation_rule": "Do NOT redefine any of these :root tokens. New Applications section must consume them as-is."
+  },
+
+  "css_classes_structural": {
+    "layout": [".page", ".container", ".section", ".section-inner", ".section.soft", ".section-head"],
+    "typography": [".eyebrow", ".grad-text", ".mono", ".lede"],
+    "buttons": [".btn", ".btn-primary", ".btn-secondary", ".btn-ghost", ".btn-sm", ".btn-tel", ".btn-ghost-light"],
+    "cards_generic": [".card", ".card-icon", ".grid-3", ".grid-2", ".grid-4"],
+    "products": [".prod-grid", ".prod-card", ".prod-img", ".prod-badge", ".prod-body", ".prod-series", ".prod-name", ".prod-part", ".prod-desc", ".prod-cta"],
+    "process": [".process", ".process-row", ".process-step", ".process-num", ".process-label", ".process-sub"],
+    "urgent": [".urgent", ".urgent-eyebrow", ".urgent-title", ".urgent-sub", ".urgent-ctas"],
+    "faq": [".faq-list", ".faq", ".faq-q-num", ".faq-a"],
+    "contact": [".contact-channels", ".channel", ".channel-icon", ".channel-label", ".channel-main", ".channel-sub", ".channel.urgent-ch", ".form-card", ".form-grid", ".field", ".form-actions"],
+    "footer": ["footer", ".footer-inner", ".footer-brand", ".footer-col", ".footer-bottom", ".footer-edwards"],
+    "floating": [".float", ".float-btn", ".float-btn.phone", ".mobile-cta", ".c-call", ".c-quote"],
+    "blog": [".blog-back", ".blog-back-btn", ".blog-crumb", ".blog-main", ".blog-header", ".post", ".post-meta", ".post-num", ".post-cat", ".post-date", ".fresh", ".post-title", ".snippet", ".article", ".info-box", ".info-box.green", ".info-box.amber", ".ib-title", ".compare-table", ".faq-wrap", ".faq-item", ".faq-q", ".faq-badge", ".aeo-closing", ".summary-card", ".sc-title", ".sc-point", ".sc-bullet", ".reader-action", ".expert-path", ".ra-title", ".ep-title", ".ra-text", ".ep-text", ".ep-contact", ".ep-tel", ".ep-sub", ".next-reads", ".next-read-link"],
+    "blog_sidenav": [".blog-sidenav", ".bsn-title", ".bsn-list", ".bsn-item", ".bsn-num", ".bsn-date", ".bsn-ttl"],
+    "mobile_menu": [".m-menu", ".m-sheet", ".m-handle", ".m-link", ".m-cta", ".m-tel"],
+    "hero": [".hero", ".hero-bg", ".hero-inner", ".hero-lede", ".hero-ctas", ".hero-badge", ".hero-badge-dot", ".hero-stats", ".stat-text"]
+  },
+
+  "nav": {
+    "desktop_order": ["홈", "제품", "수리·정비", "블로그", "FAQ", "문의", "견적 시스템"],
+    "desktop_hrefs":  ["#", "#products", "#services", "#", "#faq", "#contact", "quote.html"],
+    "desktop_handlers": ["goHome()", "goHome();goSection('products')", "goHome();goSection('services')", "goBlog()", "goHome();goSection('faq')", "goHome();goSection('contact')", "(plain link)"],
+    "mobile_order": ["홈", "제품 라인업", "수리·정비 서비스", "기술 블로그", "FAQ", "문의하기", "견적 시스템"],
+    "mobile_cta": "견적 문의하기",
+    "cta_nav_bar": "견적 문의",
+    "nav_tel_display": "031-204-7170",
+    "mobile_menu_tel": "031-204-7170 · 010-3194-7170",
+    "nav_height_token": "--nav-h: 64px",
+    "new_applications_nav_insertion": "If Applications gets its own nav item, it should go between '수리·정비' and '블로그' positions OR between '제품' and '수리·정비'. Integration engineer must decide."
+  },
+
+  "interactive_behaviors": {
+    "sticky_nav": {
+      "selector": ".nav",
+      "properties": "position:sticky; top:0; z-index:100; height:var(--nav-h); background:rgba(252,253,254,.80); backdrop-filter:saturate(180%) blur(14px)",
+      "line": 113
+    },
+    "mobile_hamburger": {
+      "selector": ".nav-hamburger",
+      "visibility": "display:flex only at max-width:768px (line 428)",
+      "toggles": "#mMenu.on"
+    },
+    "mobile_sticky_cta_threshold": {
+      "variable_name": "showCtaAfter",
+      "value_px": 520,
+      "line": 1456,
+      "condition": "window.scrollY > 520 && window.innerWidth <= 768 && #page-home.active"
+    },
+    "floating_buttons": {
+      "position": "fixed; right:20px; bottom:20px; z-index:50",
+      "mobile_adjust": "bottom:84px; right:14px (to clear mobile-cta) at max-width:768px (line 448)",
+      "items": [
+        { "type": "kakao", "action": "alert('카카오톡: @스마텍 — 010-3194-7170으로 문자 주시면 카카오로 연결해드립니다.')" },
+        { "type": "phone", "href": "tel:010-3194-7170", "label": "긴급 수리" }
+      ]
+    },
+    "blog_sidenav_visibility": {
+      "default": "display:none",
+      "media_query": "@media (min-width:1280px) { .blog-sidenav{display:block} } (line 291)",
+      "page_rule_NOTE": "CSS does NOT scope .blog-sidenav to #page-blog.active — it is always fixed in DOM. When on #page-home at ≥1280px, it will still be visible. Check with integration engineer whether this is desired. The scroll-spy IntersectionObserver only matters when posts are rendered in viewport.",
+      "confirmed_selectors_expected": ["body:has(#page-blog.active) NOT used in current CSS — bsn appears on both pages at ≥1280px"]
+    },
+    "form_submit_stub": {
+      "line": 1416,
+      "current_behavior": "preventDefault + alert",
+      "alert_text": "문의가 접수되었습니다.\\n담당자가 빠르게 연락드리겠습니다.\\n\\n긴급 수리: 010-3194-7170"
+    },
+    "scroll_margin_top": {
+      "rule": "section[id]{scroll-margin-top:calc(var(--nav-h) + 8px)} (line 416)",
+      "html_scroll_padding": "html{scroll-padding-top:calc(var(--nav-h) + 8px)} (line 415)",
+      "post_scroll_margin": ".post{scroll-margin-top:80px} (line 320)",
+      "preservation_rule": "New Applications <section id='...'> automatically inherits section[id] scroll-margin — do not override unless intentional"
+    },
+    "deep_link_blog_post_on_load": {
+      "line": 1481,
+      "pattern": "/^#p\\d+$/",
+      "behavior": "If URL hash matches #p1~#p9999, goBlog() then scrollIntoView after 60ms"
+    },
+    "reduced_motion_guard": {
+      "line": 275,
+      "rule": "@media (prefers-reduced-motion:reduce) disables hero-bg animation and sets .reveal to visible instantly"
+    }
+  },
+
+  "insertion_point_for_applications_section": {
+    "insert_after_line": 662,
+    "insert_before_line": 664,
+    "anchor_before": "</section> closing #products at line 662",
+    "anchor_after": "<section id=\"services\" class=\"section soft reveal\" at line 664",
+    "recommended_section_opening": "<section id=\"applications\" class=\"section reveal\" aria-label=\"응용 분야\">",
+    "warning_about_alternating_bg": "#products has no .soft; #services has .soft. If Applications has .soft it will create two consecutive soft sections — consider using no .soft for visual alternation, OR remove .soft from #services (but removing would count as regression)",
+    "must_include_classes": [".section", ".reveal"],
+    "optional_stagger": "If grid children should animate sequentially, add .stagger to the grid container"
+  },
+
+  "preservation_rules": [
+    "Do NOT rename ANY class listed in classes_used_by_js (page, active, reveal, stagger, in, post, bsn-item, on)",
+    "Do NOT change the signature of window.goHome(), window.goBlog(), window.goSection(id), window.toggleMenu(), window.handleFormSubmit(e)",
+    "Do NOT remove [data-count] attributes or rename the attribute — counter animation depends on exact string 'data-count'",
+    "Do NOT change the SPA pattern: #page-home and #page-blog as sibling top-level containers, each with .page class; exactly one has .active at a time",
+    "Product card inner structure (.prod-card > .prod-img + .prod-body > .prod-series/.prod-name/.prod-part/.prod-desc/.prod-cta) must stay for CSS at lines 186-200",
+    "Blog #p1 through #p10 anchors must remain resolvable as scroll targets after SPA switch to #page-blog",
+    "scroll-margin-top on section[id] (line 416) + scroll-padding-top on html (line 415) must accommodate the 64px sticky nav (--nav-h)",
+    "All 9 Edwards CDN image URLs (.edwardsvacuum.com/content/dam/...) must remain unchanged; they are hotlinked from Edwards' CMS",
+    "JSON-LD LocalBusiness schema (lines 25-46) must remain intact including founder 이명재, telephone 031-204-7170, email rokmclmj@gmail.com",
+    "Meta tags (description, keywords, og:*, canonical, theme-color #1B4B8F) at lines 4-17 must remain unchanged",
+    "Service worker registration path 'sw.js' must not change (line 1492) — manifest.json also referenced at line 19",
+    "All :root CSS custom properties (--brand, --brand-deep, --line, --ink, --ease, --nav-h, etc.) must NOT be redefined or overridden",
+    "IntersectionObserver thresholds/rootMargins (0.12 / '0px 0px -40px 0px' for reveal, 0.4 for counter, '-40% 0px -50% 0px' for post scroll-spy) should remain unless intentionally tuned",
+    "Mobile sticky CTA threshold window.scrollY > 520 (line 1456) is tied to hero height — do not insert content that moves the hero below 520px without re-tuning",
+    "handleFormSubmit is a stub (alert-only) — integration engineer should NOT replace with real submission without explicit go-ahead; current behavior is the preservation baseline",
+    "Nav items order + quote.html external link (견적 시스템) at 4 locations (468, 487, 657, 814) must remain",
+    "Footer column grid 1.4fr 1fr 1fr 1fr (line 251) and all four column contents must remain",
+    "Blog sidenav (.blog-sidenav) is position:fixed and appears on ALL pages at ≥1280px in current CSS — do not accidentally add body:has() scoping unless explicitly specified",
+    "The deep-link regex /^#p\\d+$/ on page load (line 1481) must continue to work — do NOT introduce ID collisions starting with 'p' followed by digits in the new Applications section",
+    "Company info (주소·전화·팩스·이메일·대표명) must appear verbatim in footer and JSON-LD",
+    "Product part-number ranges (9 entries in product_part_numbers) are verbatim — if Applications section cross-references products, do not paraphrase the part numbers",
+    "FAQ 6 Q&A at lines 733-738 must remain in identical order with identical text (they are AEO-targeted)",
+    "All 10 blog post titles, dates, categories, and snippets must remain verbatim (AEO-critical)",
+    "Do NOT introduce new top-level IDs that duplicate any existing ID in this manifest",
+    "If Applications section uses new CSS classes, they must not start with .prod- / .faq- / .bsn- / .post- / .m- / .nav- / .channel- / .card / .grid- / .hero- / .process- / .urgent- / .float / .c- / .blog- / .eyebrow / .snippet / .article / .info-box / .summary-card / .sc- / .ra- / .ep- / .next-read — these namespaces are reserved"
+  ],
+
+  "pre_existing_issues_flagged": [
+    {
+      "severity": "minor",
+      "line": 164,
+      "issue": ".stat-text uses 'var(--font-main)' but no such token is defined in :root (only --font-body and --font-mono). This silently falls back to inherited font, which happens to work, but the variable reference is dead.",
+      "recommendation": "Flag only — do NOT fix during integration"
+    },
+    {
+      "severity": "informational",
+      "issue": "Task prompt stated 1447 lines but file is 1498 lines. Recent commits (variants, clarification loop, product typing) likely added the 51 lines after the audit spec was written.",
+      "recommendation": "Use actual 1498-line baseline"
+    },
+    {
+      "severity": "minor",
+      "issue": "Blog sidenav (.blog-sidenav) is fixed-positioned in DOM with no body:has(#page-blog.active) CSS scoping. On #page-home at viewport ≥1280px it is still technically rendered (though hidden by page display:none ancestry via #page-blog wrapper). Verify at integration time whether home users see unexpected sidenav — currently they don't because .blog-sidenav is a SIBLING of #page-home/#page-blog (not inside #page-blog), but its visibility is governed by media query alone, not page state.",
+      "recommendation": "Preservation Verifier should confirm sidenav visibility matches pre-integration behavior on #page-home at ≥1280px"
+    },
+    {
+      "severity": "informational",
+      "line": 796,
+      "issue": "Footer subtitle says '사업자 진공펌프 판매·수리 전문.' — 사업자 (business number) is referenced without a number. Likely placeholder wording rather than a bug, but flag for review.",
+      "recommendation": "Flag only"
+    },
+    {
+      "severity": "informational",
+      "issue": "Two alert() calls exist: kakao float button (line 1348) and kakao form-secondary button (line 786). Both use the same text. Real-app replacement would require coordinated change — preserve as-is.",
+      "recommendation": "Keep both alert() stubs"
+    },
+    {
+      "severity": "informational",
+      "line": 85,
+      "issue": "html{scroll-behavior:smooth} is always-on (no prefers-reduced-motion override for this specific property). Reduced-motion guard at line 275 does not disable it.",
+      "recommendation": "Flag only"
+    }
+  ],
+
+  "integration_ambiguities_for_engineer": [
+    "The Applications section insertion point (between #products and #services) will place it inside the unthemed band (white). #products is no-soft, #services is soft. Adding Applications with default (no soft) preserves current alternation; adding with .soft creates two consecutive soft sections.",
+    "Will nav get a new item for Applications? If yes: confirm label, position, and scroll target ID. The preservation rule is only that existing 7 items retain order — new items must be inserted not swapped.",
+    "Should Applications content be internationalized (English keys match products/services)? Current site is Korean-primary with English eyebrows. Recommend same: Korean body + English eyebrow 'Applications'.",
+    "Will Applications cards use .card (generic) or a new .app-card class? If new, no collision — .app- is unused. If re-using .card, spacing from .grid-3/.grid-2 must match existing cards.",
+    "The new section's background, if it uses images, must NOT add new Edwards CDN hotlinks without updating the external_assets preservation count (currently 9 edwards-cdn images)."
+  ]
+}
