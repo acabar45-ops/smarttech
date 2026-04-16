@@ -19,6 +19,13 @@ let MK_EMAIL_PROPOSAL = null;
 let MK_ACTIVE_VARIANT = 0;
 let MK_CURRENT_SESSION_ID = null;
 
+// 명확화 라운드 상한 (최대 1회만 추가 질문)
+const MK_MAX_CLARIFY_ROUNDS = 1;
+
+// 에스컬레이션 임계 — 이 수준이면 질문도 하지 말고 이명재 대표에게 넘김
+const MK_ESCALATE_LEN_MIN = 30;        // 본문이 이것보다 짧으면 의심
+const MK_ESCALATE_CONF_MAX = 0.25;     // reqs.confidence 이 이하면 에스컬레이션 후보
+
 const MK_COMPANY = {
   name: "(주)스마텍",
   rep: "이명재",
@@ -249,7 +256,7 @@ const SELECT_SCHEMA = {
     variants: {
       type:"array",
       minItems: 1,
-      maxItems: 3,
+      maxItems: 2,
       items:{
         type:"object",
         properties:{
@@ -281,11 +288,11 @@ const SELECT_SCHEMA = {
   },
   required:["variants","overall_confidence"]
 };
-const SELECT_PROMPT_HEADER = `스마텍 제품 선정 전문가. 1~3 variants 제안을 select_products 도구로 반환.
+const SELECT_PROMPT_HEADER = `스마텍 제품 선정 전문가. 1~2 variants 제안을 select_products 도구로 반환.
 
 규칙:
 1. partNo 는 제공된 후보 JSON 내 값만 사용. 존재하지 않는 Part No 생성 금지.
-2. 단일 해석 명확 → variants 1개. 해석 여지/트레이드오프 있으면 2~3.
+2. 단일 해석 명확 → variants 1개. 해석 여지/트레이드오프 있으면 2개까지만 (표준 vs 대안 구조).
 3. 각 variant 는 서로 다른 positioning (표준/고사양/경제형 등). 단순 수량 차이는 variant 아님.
 4. pros/cons/best_for 반드시 작성. 관점 중복 금지.
 5. 후보 JSON 의 't' 타입 필드 참고 → 완결 시스템 (펌프+부스터+터보+컨트롤러+밸브 등 필요한 것).
@@ -505,6 +512,45 @@ function matchExistingClient(input){
 }
 
 /* ============================================================
+   에스컬레이션 판정 — 아주 짧거나 핵심 정보 전무 시
+============================================================ */
+function shouldEscalate(email, reqs){
+  const body = String(email||"").trim();
+  // 본문이 너무 짧고 이메일/전화 외에 쓸만한 정보 없음
+  const strippedLen = body.replace(/[\s\r\n]+/g," ").length;
+  const hasEmailOnly = /^.{0,80}$/s.test(body) && /@/.test(body);
+  if(strippedLen < MK_ESCALATE_LEN_MIN) return true;
+  if(hasEmailOnly) return true;
+  // Agent 1.5 추출 결과가 모두 비어있고 confidence 매우 낮음
+  if(reqs){
+    const allEmpty = (!reqs.models_mentioned?.length) && (!reqs.processes?.length)
+                  && (!reqs.applications?.length) && (!reqs.accessories_needed?.length)
+                  && !reqs.vacuum_level;
+    if(allEmpty && (reqs.confidence ?? 1) < MK_ESCALATE_CONF_MAX) return true;
+  }
+  return false;
+}
+
+/* ============================================================
+   명확화 라운드 관리 — 상한 도달 시 force-proceed
+============================================================ */
+async function decideClarifyOrForce(sessionId, reasons){
+  let round = 0;
+  if(sessionId){
+    const sess = await loadSession(sessionId);
+    round = sess?.clarify_rounds || 0;
+  }
+  if(round >= MK_MAX_CLARIFY_ROUNDS){
+    return {
+      force: true,
+      forceReason: `명확화 ${round}회 수행 후에도 정보가 부족합니다. 현재 정보로 최선 추정 견적을 생성합니다. 영업 검토 후 발송 권장.`,
+      reasons,
+    };
+  }
+  return { force: false, nextRound: round + 1 };
+}
+
+/* ============================================================
    명확화 트리거 판별
 ============================================================ */
 function needsClarification(reqs, products, verify){
@@ -637,10 +683,23 @@ async function runEmailAgents(opts={}){
     reqsData = gr.data;
   }catch(e){ console.warn("Agent 1.5 실패(진행):", e); }
 
+  // ── 에스컬레이션 판정 (너무 빈약 → 이명재 대표에게) ──
+  if(shouldEscalate(email, reqsData) && !opts.forceProceed){
+    out.innerHTML += `<div class="email-step"><strong>에스컬레이션</strong> · 판단 가능한 정보가 거의 없어 담당자 확인 필요</div>`;
+    return enterEscalationMode(email, gradeData, reqsData, existingSessionId);
+  }
+
+  // ── 명확화 판정 (라운드 상한 적용) ──
   const earlyCheck = needsClarification(reqsData, null, null);
   if(earlyCheck.needed && !opts.forceProceed){
-    out.innerHTML += `<div class="email-step"><strong>명확화 판단</strong> · 정보 부족, Agent 2 생략</div>`;
-    return enterClarificationMode(email, gradeData, reqsData, earlyCheck.reasons, existingSessionId);
+    const decided = await decideClarifyOrForce(existingSessionId, earlyCheck.reasons);
+    if(decided.force){
+      out.innerHTML += `<div class="email-step"><strong>⚠ 명확화 상한 도달</strong> · ${escapeHtml(decided.forceReason)}</div>`;
+      opts._autoForced = { reasons: decided.reasons, forceReason: decided.forceReason };
+    } else {
+      out.innerHTML += `<div class="email-step"><strong>명확화 판단</strong> · 정보 부족, Agent 2 생략</div>`;
+      return enterClarificationMode(email, gradeData, reqsData, earlyCheck.reasons, existingSessionId, decided.nextRound);
+    }
   }
 
   const candidates = prefilterCatalog(email, reqsData);
@@ -648,10 +707,15 @@ async function runEmailAgents(opts={}){
   out.innerHTML += `<div class="email-step"><strong>사전필터</strong> · ${compact.length}개 (family+type 그룹핑, 도메인 하드필터)</div>`;
 
   if(!compact.length){
-    return enterClarificationMode(email, gradeData, reqsData, ["메일에서 제품 단서가 발견되지 않음."], existingSessionId);
+    const decided = await decideClarifyOrForce(existingSessionId, ["메일에서 제품 단서가 발견되지 않음."]);
+    if(decided.force){
+      // 후보 없으면 Agent 2 실행 불가 → 에스컬레이션으로
+      return enterEscalationMode(email, gradeData, reqsData, existingSessionId);
+    }
+    return enterClarificationMode(email, gradeData, reqsData, ["메일에서 제품 단서가 발견되지 않음."], existingSessionId, decided.nextRound);
   }
 
-  out.innerHTML += `<div class="email-step"><strong>Agent 2</strong> · 1~3 variants 제품 선정 중…</div>`;
+  out.innerHTML += `<div class="email-step"><strong>Agent 2</strong> · 1~2 variants 제품 선정 중…</div>`;
   let g2;
   try{
     const userText =
@@ -659,7 +723,7 @@ async function runEmailAgents(opts={}){
       "[Agent 1.5 요구사항]\n" + JSON.stringify(reqsData||{}) + "\n\n" +
       "[메일 본문]\n" + email + "\n\n" +
       "[후보 카탈로그 JSON: p,d,s,f,t]\n" + JSON.stringify(compact) + "\n\n" +
-      "해석 여지 없으면 1안, 있으면 2~3안.";
+      "해석 여지 없으면 1안, 있으면 2안까지만.";
     g2 = await callTool("select_products", SELECT_SCHEMA, SELECT_PROMPT_HEADER, userText, { max_tokens: 3072 });
   }catch(e){
     out.innerHTML += `<div class="email-err">Agent 2 실패: ${escapeHtml(e.message||String(e))}</div>`;
@@ -679,9 +743,23 @@ async function runEmailAgents(opts={}){
   }catch(e){ console.warn("Agent 2.5 실패(진행):", e); }
 
   const verifyCheck = needsClarification(reqsData, productsData, verifyData);
-  if(verifyCheck.needed && !opts.forceProceed){
-    out.innerHTML += `<div class="email-step"><strong>자가검증</strong> · 정보 부족, 명확화 모드 전환</div>`;
-    return enterClarificationMode(email, gradeData, reqsData, verifyCheck.reasons, existingSessionId);
+  if(verifyCheck.needed && !opts.forceProceed && !opts._autoForced){
+    const decided = await decideClarifyOrForce(existingSessionId, verifyCheck.reasons);
+    if(decided.force){
+      out.innerHTML += `<div class="email-step"><strong>⚠ 명확화 상한 도달</strong> · ${escapeHtml(decided.forceReason)}</div>`;
+      opts._autoForced = { reasons: decided.reasons, forceReason: decided.forceReason };
+    } else {
+      out.innerHTML += `<div class="email-step"><strong>자가검증</strong> · 정보 부족, 명확화 모드 전환</div>`;
+      return enterClarificationMode(email, gradeData, reqsData, verifyCheck.reasons, existingSessionId, decided.nextRound);
+    }
+  }
+
+  // auto-forced 경고를 productsData.common_notes 에 prepend
+  if(opts._autoForced){
+    const prev = productsData.common_notes ? String(productsData.common_notes) : "";
+    productsData.common_notes =
+      `⚠ [명확화 상한 도달] ${opts._autoForced.forceReason}\n확인 필요: ${(opts._autoForced.reasons||[]).join(" · ")}` +
+      (prev ? `\n\n${prev}` : "");
   }
 
   out.innerHTML += `<div class="email-step"><strong>Agent 3</strong> · 회신 초안 작성 중…</div>`;
@@ -715,7 +793,7 @@ async function runEmailAgents(opts={}){
 /* ============================================================
    명확화 모드 진입
 ============================================================ */
-async function enterClarificationMode(email, gradeData, reqsData, reasons, existingSessionId){
+async function enterClarificationMode(email, gradeData, reqsData, reasons, existingSessionId, newRound){
   const out = document.getElementById("emailResult");
   out.innerHTML += `<div class="email-step"><strong>Agent Q</strong> · 고객에게 보낼 추가 문의 메일 작성 중…</div>`;
 
@@ -735,16 +813,140 @@ async function enterClarificationMode(email, gradeData, reqsData, reasons, exist
 
   let sessionId = existingSessionId;
   const mcId = gradeData._existing_client?.id || null;
+  const roundToSave = (typeof newRound === "number") ? newRound : 1;
   if(!sessionId){
     const sess = await createSession({ originalEmail: email, clarification: askData, matchedClientId: mcId });
     sessionId = sess?.id || null;
+    if(sessionId) await updateSession(sessionId, { clarify_rounds: roundToSave });
   } else {
-    await updateSession(sessionId, { clarification: askData, status: "pending_reply" });
+    await updateSession(sessionId, { clarification: askData, status: "pending_reply", clarify_rounds: roundToSave });
   }
   MK_CURRENT_SESSION_ID = sessionId;
 
-  renderClarificationCard(gradeData, reqsData, askData, reasons, sessionId);
+  renderClarificationCard(gradeData, reqsData, askData, reasons, sessionId, roundToSave);
   renderPendingSessions();
+}
+
+/* ============================================================
+   에스컬레이션 모드 — 이명재 대표에게 넘김
+============================================================ */
+async function enterEscalationMode(email, gradeData, reqsData, existingSessionId){
+  const out = document.getElementById("emailResult");
+  out.innerHTML += `<div class="email-step"><strong>Agent E</strong> · 담당자(이명재 대표) 전달용 정중 안내 작성 중…</div>`;
+
+  const input =
+    "[원문 메일]\n" + email + "\n\n" +
+    "[추출 요구사항(있다면)]\n" + JSON.stringify(reqsData||{}) + "\n\n" +
+    "지침:\n" +
+    "- 이 문의는 정보가 너무 부족하여 자동 답변이 어렵습니다.\n" +
+    "- 고객에게 보낼 간결한 안내 메일을 작성하십시오 — \"문의 감사 + 정확한 답변을 위해 담당 대표이사(이명재)가 직접 확인 후 회신드리겠습니다\" 톤.\n" +
+    "- 3~5문장. 과한 사과 금지. 신속 응대 약속 1문장.\n" +
+    "- 서명 블록은 ASK_PROMPT 와 동일 형식으로.\n" +
+    "- subject 는 'RE: <요약> - 담당자 확인 후 회신드립니다' 또는 유사.";
+  let askData = null;
+  try{
+    const ga = await callTool("ask_clarification", ASK_SCHEMA, ASK_PROMPT + "\n\n" + input, input);
+    askData = ga.data;
+  }catch(e){
+    askData = {
+      subject: "문의해주셔서 감사합니다 - 담당자 확인 후 회신드립니다",
+      body_text: "안녕하세요.\n\n문의해주셔서 감사합니다. 정확한 답변을 위해 담당 대표이사(이명재)께서 직접 확인 후 빠르게 회신드리도록 하겠습니다. 번거로우시겠지만 잠시만 기다려 주십시오.\n\n(주)스마텍 | Edwards 공식대리점\n대표 이명재\nT. 031-204-7170  M. 010-3194-7170",
+      asked_fields: [],
+      confidence: 0.8,
+    };
+  }
+
+  // 세션 저장 — escalated 상태로 completed 처리
+  let sessionId = existingSessionId;
+  const mcId = gradeData._existing_client?.id || null;
+  if(!sessionId){
+    const sess = await createSession({ originalEmail: email, clarification: askData, matchedClientId: mcId });
+    sessionId = sess?.id || null;
+  }
+  if(sessionId){
+    await updateSession(sessionId, {
+      clarification: askData,
+      status: "abandoned",
+      last_proposal: { escalated: true, to: "rokmclmj@gmail.com" }
+    });
+  }
+  MK_CURRENT_SESSION_ID = sessionId;
+
+  renderEscalationCard(gradeData, email, askData);
+  renderPendingSessions();
+}
+
+function renderEscalationCard(gradeData, email, ask){
+  const out = document.getElementById("emailResult");
+  const to = gradeData?.customer?.email || "";
+  const subj = ask?.subject || "문의해주셔서 감사합니다 - 담당자 확인 후 회신드립니다";
+  const body = ask?.body_text || "";
+  out.innerHTML = `
+    <div class="escalate-card">
+      <div class="clarify-head">
+        <span class="pill pill-err">에스컬레이션</span>
+        <span class="muted" style="font-size:11px">→ 이명재 대표 (rokmclmj@gmail.com · 010-3194-7170)</span>
+      </div>
+      <div class="email-rationale" style="border-left-color:#B3261E">
+        <strong>자동 판단 불가.</strong> 메일 정보만으로는 적합한 견적을 생성하기 어려운 문의입니다.
+        고객에게는 "담당자 직접 회신" 안내를 보내고, 영업 담당(이명재 대표)이 직접 검토하도록 넘깁니다.
+      </div>
+
+      <div class="section-title" style="margin-top:22px">고객 안내 메일 (복사/발송)</div>
+      <div class="clarify-meta">
+        <label>수신</label><input type="text" id="escTo" value="${escapeHtml(to)}" placeholder="고객 이메일">
+        <label>제목</label><input type="text" id="escSubject" value="${escapeHtml(subj)}">
+      </div>
+      <textarea id="escBody" class="email-body" rows="10">${escapeHtml(body)}</textarea>
+      <div class="btn-row">
+        <button class="btn" onclick="copyEscalationReply()">고객 안내 복사</button>
+        <button class="btn" onclick="openEscalationMailto()">고객에게 메일 앱 열기</button>
+      </div>
+
+      <div class="section-title" style="margin-top:28px">이명재 대표 인계 메모</div>
+      <textarea class="email-body" rows="8" readonly>안녕하세요, 대표님.
+
+아래 고객 문의는 자동 판정이 어려워 에스컬레이션 드립니다. 직접 확인 후 회신 부탁드립니다.
+
+고객: ${escapeHtml(gradeData?.customer?.company||"")} / ${escapeHtml(gradeData?.customer?.contact||"")}
+연락처: ${escapeHtml(gradeData?.customer?.email||"")} · ${escapeHtml(gradeData?.customer?.phone||"")}
+
+— 원문 메일 —
+${escapeHtml(email)}
+</textarea>
+      <div class="btn-row">
+        <button class="btn" onclick="copyEscalationBrief()">대표 인계 메모 복사</button>
+        <button class="btn primary" onclick="openEscalationToRep()">대표(rokmclmj@gmail.com) 메일 앱 열기</button>
+        <button class="btn" onclick="clearEmailInput()">닫기</button>
+      </div>
+    </div>`;
+}
+
+function copyEscalationReply(){
+  const to = document.getElementById("escTo")?.value || "";
+  const subj = document.getElementById("escSubject")?.value || "";
+  const body = document.getElementById("escBody")?.value || "";
+  navigator.clipboard.writeText(`To: ${to}\nSubject: ${subj}\n\n${body}`).then(()=>alert("고객 안내 메일이 클립보드에 복사되었습니다."));
+}
+function openEscalationMailto(){
+  openMailCompose({
+    to: document.getElementById("escTo")?.value || "",
+    subject: document.getElementById("escSubject")?.value || "",
+    body: document.getElementById("escBody")?.value || "",
+  });
+}
+function copyEscalationBrief(){
+  const ta = document.querySelectorAll(".escalate-card textarea")[1];
+  if(!ta) return;
+  navigator.clipboard.writeText(ta.value).then(()=>alert("대표 인계 메모가 복사되었습니다."));
+}
+function openEscalationToRep(){
+  const ta = document.querySelectorAll(".escalate-card textarea")[1];
+  openMailCompose({
+    to: "rokmclmj@gmail.com",
+    subject: "[에스컬레이션] 고객 문의 — 대표 확인 요청",
+    body: ta ? ta.value : "",
+  });
 }
 
 /* ============================================================
@@ -855,16 +1057,18 @@ async function renderPendingSessions(){
     <div class="card" style="border-left:3px solid #C7921F;background:#FFFAEF;padding:18px 22px">
       <div class="section-title" style="margin-top:0">회신 대기 중인 명확화 세션 <span class="pill" style="margin-left:8px">${list.length}</span></div>
       <table class="agent-review" style="width:100%">
-        <thead><tr><th>업데이트</th><th>질문 제목</th><th>요청 항목</th><th style="width:160px"></th></tr></thead>
+        <thead><tr><th>업데이트</th><th>질문 제목</th><th>요청 항목</th><th style="width:70px">라운드</th><th style="width:160px"></th></tr></thead>
         <tbody>
         ${list.map(s=>{
           const dt = (s.updated_at||s.created_at||"").slice(0,16).replace("T"," ");
           const subj = s.clarification?.subject || "(제목 없음)";
           const fields = (s.clarification?.asked_fields||[]).join(", ");
+          const r = s.clarify_rounds || 0;
           return `<tr>
             <td>${escapeHtml(dt)}</td>
             <td>${escapeHtml(subj)}</td>
             <td>${escapeHtml(fields)}</td>
+            <td><span class="pill-soft">${r}/${MK_MAX_CLARIFY_ROUNDS}</span></td>
             <td style="text-align:right">
               <button class="add-btn" onclick="continueSession('${s.id}')">이어가기</button>
               <button class="del-btn" onclick="abandonSession('${s.id}')">폐기</button>
@@ -885,18 +1089,22 @@ async function abandonSession(id){
 /* ============================================================
    명확화 카드 렌더
 ============================================================ */
-function renderClarificationCard(grade, reqs, ask, reasons, sessionId){
+function renderClarificationCard(grade, reqs, ask, reasons, sessionId, round){
   const out = document.getElementById("emailResult");
   const to = grade?.customer?.email || "";
   const subj = ask?.subject || "";
   const body = ask?.body_text || "";
   const asked = ask?.asked_fields || [];
+  const r = round || 1;
+  const isLastRound = r >= MK_MAX_CLARIFY_ROUNDS;
   out.innerHTML = `
     <div class="clarify-card">
       <div class="clarify-head">
         <span class="pill" style="background:#C7921F">추가 확인 필요</span>
+        <span class="pill pill-soft">라운드 ${r}/${MK_MAX_CLARIFY_ROUNDS}</span>
         <span class="muted" style="font-size:11px">session: ${sessionId ? sessionId.slice(0,8) : "(미생성)"}</span>
       </div>
+      ${isLastRound ? `<div class="email-notes"><strong>안내.</strong> 이번이 마지막 명확화 회차입니다. 다음 회신이 여전히 불명확하면 추가 질문 없이 현재 정보로 견적을 자동 생성합니다.</div>` : ""}
       <div class="email-rationale">
         <strong>명확화가 필요한 이유</strong>
         <ul style="margin-top:6px;margin-left:18px;font-size:12px;line-height:1.8">${(reasons||[]).map(r=>`<li>${escapeHtml(r)}</li>`).join("")}</ul>
@@ -1020,7 +1228,9 @@ function renderEmailProposal(grade, products, verify, meta1, meta2, meta3, reqsD
       <div class="variant-tabs">${varTabs}</div>
       <div id="variantPanel">${renderVariantPanel(variants[0], grade.grade, verify)}</div>
 
-      ${products.common_notes ? `<div class="email-notes" style="margin-top:14px"><strong>공통 참고.</strong> ${escapeHtml(products.common_notes)}</div>` : ""}
+      ${products.common_notes && products.common_notes.startsWith("⚠ [명확화 상한 도달]")
+        ? `<div class="email-err" style="margin-top:14px;white-space:pre-wrap">${escapeHtml(products.common_notes)}</div>`
+        : (products.common_notes ? `<div class="email-notes" style="margin-top:14px"><strong>공통 참고.</strong> ${escapeHtml(products.common_notes)}</div>` : "")}
 
       <div id="replyDraftBlock">${replyData ? renderReplyDraft(replyData, variants[0]) : ""}</div>
 

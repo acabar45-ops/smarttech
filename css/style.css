@@ -1657,3 +1657,11 @@ tr:hover td{background:var(--mk-bg-soft);box-shadow:inset 3px 0 0 var(--mk-navy)
   /* 텍스트 입력 필드는 선택 허용 */
   input, textarea, [contenteditable]{ -webkit-user-select:text; user-select:text }
 }
+
+/* ============================================================
+   Escalation card — 이명재 대표 인계
+============================================================ */
+.escalate-card{
+  border-top:4px solid #B3261E;
+  padding:22px 0 8px;margin-top:8px;
+}
